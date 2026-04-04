@@ -1,0 +1,51 @@
+@import "tailwindcss";
+
+:root {
+  --background: #F7F4EE;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--background);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@theme {
+  --font-fraunces: var(--font-fraunces), serif;
+  
+  /* Define the keyframes for scrolling left and right */
+  --animate-marquee-left: marquee-left 25s linear infinite;
+  --animate-marquee-right: marquee-right 25s linear infinite;
+
+  @keyframes marquee-left {
+    0% { transform: translateX(0); }
+    100% { transform: translateX(-50%); } /* Move left by half the width */
+  }
+
+  @keyframes marquee-right {
+    0% { transform: translateX(-50%); } /* Start halfway */
+    100% { transform: translateX(0); }  /* Move right to 0 */
+  }
+
+}
+
+@keyframes hover-up-down {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-hover-up-down {
+  animation: hover-up-down 3s ease-in-out infinite;
+}
+
+@theme {
+  --font-fraunces: var(--font-fraunces), serif;
+}
+
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
