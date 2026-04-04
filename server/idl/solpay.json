@@ -1,0 +1,464 @@
+{
+  "address": "8ik9hQSoHoEnnzDz2ifBjjNK8PBEAQwgcgJpuRYsgRMs",
+  "metadata": {
+    "name": "solpay",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "SolPay — send SOL to anyone via phone number"
+  },
+  "instructions": [
+    {
+      "name": "claim_escrow",
+      "docs": [
+        "Claim escrowed SOL. Requires claim_authority co-sign (post-OTP).",
+        "Also auto-registers the phone for future direct transfers."
+      ],
+      "discriminator": [
+        200,
+        80,
+        182,
+        159,
+        61,
+        75,
+        9,
+        205
+      ],
+      "accounts": [
+        {
+          "name": "claim_authority",
+          "signer": true,
+          "address": "Ga5Xonhi7vWhhgmRcBbdRCeeVM5PCu1FiEThf6BEGt1x"
+        },
+        {
+          "name": "claimant",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender",
+          "writable": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow.sender",
+                "account": "EscrowAccount"
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "refund_escrow",
+      "docs": [
+        "Refund expired escrow. Permissionless — anyone can call, program enforces 72h check."
+      ],
+      "discriminator": [
+        107,
+        186,
+        89,
+        99,
+        26,
+        194,
+        23,
+        204
+      ],
+      "accounts": [
+        {
+          "name": "escrow",
+          "writable": true
+        },
+        {
+          "name": "sender",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_phone",
+      "docs": [
+        "Register a phone number to a wallet. Requires claim_authority co-sign (post-OTP)."
+      ],
+      "discriminator": [
+        121,
+        33,
+        249,
+        114,
+        183,
+        88,
+        173,
+        36
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "claim_authority",
+          "signer": true,
+          "address": "Ga5Xonhi7vWhhgmRcBbdRCeeVM5PCu1FiEThf6BEGt1x"
+        },
+        {
+          "name": "registry",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "wallet_pubkey",
+          "type": "pubkey"
+        }
+      ]
+    },
+    {
+      "name": "send_direct",
+      "docs": [
+        "Send SOL directly to a registered phone's wallet."
+      ],
+      "discriminator": [
+        122,
+        188,
+        8,
+        55,
+        217,
+        141,
+        153,
+        171
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "recipient_wallet",
+          "writable": true
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "send_escrow",
+      "docs": [
+        "Send SOL to an unregistered phone. Creates escrow for them to claim."
+      ],
+      "discriminator": [
+        37,
+        237,
+        238,
+        235,
+        195,
+        6,
+        211,
+        85
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "escrow",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sender"
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "EscrowAccount",
+      "discriminator": [
+        36,
+        69,
+        48,
+        18,
+        128,
+        225,
+        125,
+        135
+      ]
+    },
+    {
+      "name": "RegistryAccount",
+      "discriminator": [
+        113,
+        93,
+        106,
+        201,
+        100,
+        166,
+        146,
+        98
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "Unauthorized",
+      "msg": "Unauthorized: invalid claim authority"
+    },
+    {
+      "code": 6001,
+      "name": "NotExpiredYet",
+      "msg": "Escrow has not expired yet (72h)"
+    },
+    {
+      "code": 6002,
+      "name": "ZeroAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidSender",
+      "msg": "Invalid sender account"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidRecipient",
+      "msg": "Recipient wallet does not match registry"
+    }
+  ],
+  "types": [
+    {
+      "name": "EscrowAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "phone_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "RegistryAccount",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "wallet",
+            "type": "pubkey"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}
