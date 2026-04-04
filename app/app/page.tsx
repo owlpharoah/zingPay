@@ -39,7 +39,7 @@ export default function LandingPage() {
             <FadeIn delay={0.2} >
               <div>
                 <p className="font-[fraunces] text-8xl text-[#0B2818]">
-                  <span className="font-black">Send money <br /> globally with just <br /> a </span><span className="font-[fraunces] italic font-extralight">phone number</span>
+                  <span className="font-black">Global cash <br />with a <br /></span><span className="font-[fraunces] italic font-extralight">Local</span> feel
                 </p>
               </div>
             </FadeIn>
