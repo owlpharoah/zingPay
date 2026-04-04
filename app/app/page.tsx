@@ -9,11 +9,12 @@ export default function LandingPage() {
     <div className="max-w-screen overflow-x-hidden">
       {/* navbar */}
       <div className="flex w-screen font-[outfit] bg-[#0B2818] justify-between h-31 p-10 items-center">
-        <Link href="#"><Image alt="zingpay logo" src="/zingpay.svg" width={130} height={37} /></Link>
+        <Link href="/"><Image alt="zingpay logo" src="/zingpay.svg" width={130} height={37} /></Link>
         <ul className="flex space-x-10">
           <li><a href="#how-it-works" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">How it works</a></li>
           <li><a href="#features" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Features</a></li>
           <li><a href="#security" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Security</a></li>
+          <li><a href="https://zingpay-docs.vercel.app" target="_blank" rel="noreferrer" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Documentation</a></li>
         </ul>
         <Link href="/register" className="bg-[#B8FF4F] rounded-3xl p-3">
           <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">OpenApp</p>
@@ -45,10 +46,10 @@ export default function LandingPage() {
 
             <FadeIn delay={0.4}>
               <div className="flex items-center space-x-5 mt-5">
-                <Link href="#" className="bg-[#B8FF4F] rounded-3xl p-3 border-2 border-[#0B2818] h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
+                <Link href="/send" className="bg-[#B8FF4F] rounded-3xl p-3 border-2 border-[#0B2818] h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
                   <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">Try it now</p>
                 </Link>
-                <Link href="#" className="rounded-3xl bg-white border-2 border-[#0B2818] p-5 h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
+                <Link href="#how-it-works" className="rounded-3xl bg-white border-2 border-[#0B2818] p-5 h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
                   <p className="text-[#0B2818] font-semibold w-80 text-align text-center text-xl">See how it works</p>
                 </Link>
               </div>
@@ -187,7 +188,7 @@ export default function LandingPage() {
         </div>
 
         <div className="relative">
-          <Link href="/features" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-40 z-40">
+          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-40 z-40">
             <p>View Full Flow</p>
           </Link>
           <Image
@@ -204,7 +205,7 @@ export default function LandingPage() {
             height={109}
             className="relative -top-130 left-170 rotate-12"
           />
-          <Link href="/features" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-fit flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-155 left-35 rotate-12">
+          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-fit flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-155 left-35 rotate-12">
             <p>Try it now</p>
           </Link>
         </div>
@@ -294,7 +295,7 @@ export default function LandingPage() {
             id="security"
             className="block mx-auto -top-100 relative"
           />
-          <Link href="/features" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center shadow-[0px_4px_0px_0px_#0B2818] relative -top-130 mr-auto left-110">
+          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center shadow-[0px_4px_0px_0px_#0B2818] relative -top-130 mr-auto left-110">
             <p>Try it now</p>
           </Link>        </FadeIn>
         <div className="flex space-x-20 mx-auto relative -top-100">
@@ -319,7 +320,7 @@ export default function LandingPage() {
         <p className="text-white text-lg font-normal mt-4 font-[outfit] font-semibold">
           No downloads, No signups, Just open the app and go!
         </p>
-        <Link href="#" className="bg-[#B8FF4F] rounded-3xl p-3 mt-10">
+        <Link href="/send" className="bg-[#B8FF4F] rounded-3xl p-3 mt-10">
           <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">OpenApp</p>
         </Link>
       </div>
