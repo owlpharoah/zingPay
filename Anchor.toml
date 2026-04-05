@@ -5,11 +5,11 @@ package_manager = "npm"
 resolution = true
 skip-lint = false
 
-[programs.localnet]
-solpay = "8ik9hQSoHoEnnzDz2ifBjjNK8PBEAQwgcgJpuRYsgRMs"
-
 [programs.devnet]
-solpay = "8ik9hQSoHoEnnzDz2ifBjjNK8PBEAQwgcgJpuRYsgRMs"
+solpay = "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm"
+
+[programs.localnet]
+solpay = "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm"
 
 [registry]
 url = "https://api.apr.dev"
