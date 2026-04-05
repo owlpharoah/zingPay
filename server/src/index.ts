@@ -23,7 +23,7 @@ dotenv.config();
 const PORT = parseInt(process.env.PORT || "3001");
 const RPC_URL = process.env.SOLANA_RPC_URL || "https://api.devnet.solana.com";
 const PROGRAM_ID = new PublicKey(
-  process.env.PROGRAM_ID || "8ik9hQSoHoEnnzDz2ifBjjNK8PBEAQwgcgJpuRYsgRMs",
+  process.env.PROGRAM_ID || "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm",
 );
 const APP_URL = process.env.APP_URL || "http://localhost:3000";
 const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
