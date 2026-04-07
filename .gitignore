@@ -7,5 +7,6 @@ test-ledger
 .yarn
 claim_authority.json
 server/.env
+server/dist
 app/.env.local
 app/.next

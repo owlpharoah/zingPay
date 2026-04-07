@@ -6,28 +6,31 @@ import FadeIn from "@/components/FadeInView";
 
 export default function LandingPage() {
   return (
-    <div className="max-w-screen overflow-x-hidden">
-      {/* navbar */}
-      <div className="flex w-screen font-[outfit] bg-[#0B2818] justify-between h-31 p-10 items-center">
-        <Link href="/"><Image alt="zingpay logo" src="/zingpay.svg" width={130} height={37} /></Link>
-        <ul className="flex space-x-10">
-          <li><a href="#how-it-works" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">How it works</a></li>
-          <li><a href="#features" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Features</a></li>
-          <li><a href="#security" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Security</a></li>
-          <li><a href="https://zingpay-docs.vercel.app" target="_blank" rel="noreferrer" className="text-[#F7F4EE] hover:text-[#B8FF4F] text-xl">Documentation</a></li>
-        </ul>
-        <Link href="/register" className="bg-[#B8FF4F] rounded-3xl p-3">
-          <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">OpenApp</p>
-        </Link>
-      </div>
+    <div className="w-full overflow-x-hidden font-[outfit]">
+      <header className="bg-[#0B2818]">
+        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
+          <Link href="/">
+            <Image alt="zingpay logo" src="/zingpay.svg" width={130} height={37} />
+          </Link>
 
-      {/* hero-section */}
+          <ul className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm sm:text-base lg:text-xl">
+            <li><a href="#how-it-works" className="text-[#F7F4EE] hover:text-[#B8FF4F]">How it works</a></li>
+            <li><a href="#features" className="text-[#F7F4EE] hover:text-[#B8FF4F]">Features</a></li>
+            <li><a href="#security" className="text-[#F7F4EE] hover:text-[#B8FF4F]">Security</a></li>
+            <li><a href="https://zingpay-docs.vercel.app" target="_blank" rel="noreferrer" className="text-[#F7F4EE] hover:text-[#B8FF4F]">Documentation</a></li>
+          </ul>
 
-      <div className="bg-[url(/verticalGrid.svg)] pb-50 relative z-0 bg-cover">
-        <div className="flex justify-center p-4 pt-25 items-center space-x-20">
-          <div className="flex flex-col">
+          <Link href="/register" className="w-full rounded-3xl bg-[#B8FF4F] px-5 py-2 text-center sm:w-auto">
+            <p className="text-lg font-semibold text-[#0B2818]">OpenApp</p>
+          </Link>
+        </div>
+      </header>
+
+      <section className="relative z-0 bg-[url(/verticalGrid.svg)] bg-cover pb-16 lg:pb-24">
+        <div className="mx-auto grid max-w-7xl grid-cols-1 gap-10 px-4 pt-10 sm:px-6 lg:grid-cols-2 lg:items-center lg:gap-16 lg:px-10 lg:pt-16">
+          <div>
             <FadeIn>
-              <ul className="flex items-center space-x-3 text-[#B8FF4F] bg-[#0B2818] font-[outfit] rounded-4xl p-3 w-fit mb-5">
+              <ul className="mb-5 flex w-fit flex-wrap items-center gap-2 rounded-4xl bg-[#0B2818] px-4 py-3 text-sm text-[#B8FF4F] sm:text-base">
                 <li>On-chain escrow</li>
                 <li><Image alt="dot" src="/dot.svg" width={10} height={10} /></li>
                 <li>Non-custodial</li>
@@ -36,295 +39,207 @@ export default function LandingPage() {
               </ul>
             </FadeIn>
 
-            <FadeIn delay={0.2} >
-              <div>
-                <p className="font-[fraunces] text-8xl text-[#0B2818]">
-                  <span className="font-black">Global cash <br />with a <br /></span><span className="font-[fraunces] italic font-extralight">Local</span> feel
-                </p>
-              </div>
+            <FadeIn delay={0.2}>
+              <p className="font-[fraunces] text-5xl leading-[1.05] text-[#0B2818] sm:text-6xl md:text-7xl xl:text-8xl">
+                <span className="font-black">Global cash with a </span>
+                <span className="italic font-extralight">Local</span>
+                <span className="font-black"> feel</span>
+              </p>
             </FadeIn>
 
             <FadeIn delay={0.4}>
-              <div className="flex items-center space-x-5 mt-5">
-                <Link href="/send" className="bg-[#B8FF4F] rounded-3xl p-3 border-2 border-[#0B2818] h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
-                  <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">Try it now</p>
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
+                <Link href="/send" className="flex h-12 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#B8FF4F] px-6 shadow-[0px_4px_0px_0px_#0B2818]">
+                  <p className="text-lg font-semibold text-[#0B2818]">Try it now</p>
                 </Link>
-                <Link href="#how-it-works" className="rounded-3xl bg-white border-2 border-[#0B2818] p-5 h-[43px] flex items-center shadow-[0px_4px_0px_0px_#0B2818]">
-                  <p className="text-[#0B2818] font-semibold w-80 text-align text-center text-xl">See how it works</p>
+                <Link href="#how-it-works" className="flex h-12 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-white px-6 shadow-[0px_4px_0px_0px_#0B2818]">
+                  <p className="text-lg font-semibold text-[#0B2818]">See how it works</p>
                 </Link>
               </div>
             </FadeIn>
           </div>
+
           <FadeIn>
-            <div className="w-[387px] h-[366px] rounded-[65px] bg-[#0B2818] ">
-              <Image alt="out mascot zingy" src="/Zingy.svg" width={387} height={366} className="inline-block" />
+            <div className="mx-auto w-full max-w-105 rounded-[48px] bg-[#0B2818] p-3 sm:rounded-[60px]">
+              <Image alt="our mascot zingy" src="/Zingy.svg" width={387} height={366} className="h-auto w-full" />
             </div>
           </FadeIn>
         </div>
 
-        {/* --- BOX 1 WITH LINE --- */}
-        <div className="flex items-center w-full mt-30 relative z-10">
-          <div className="h-[3px] bg-[#0B2818] flex-grow"></div>
-          {/* Solid line expanding from the left edge */}
-          <FadeIn direction="left" className="bg-[#F7F4EE] rounded-l-[64px] h-[175px] border-3 border-[#0B2818] flex items-center justify-around w-400 shrink-0">
-            <div className="bg-[#0B2818] rounded-4xl relative w-80 h-20 text-center flex items-center justify-center">
-              <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -top-2 -left-2" />
-              <p className="text-[#B8FF4F] text-xl font-semibold">Wallet addresses are hard to<br /> share and easy to mistype.</p>
-            </div>
-
-            <div className="bg-[#0B2818] rounded-4xl relative w-80 h-20 text-center flex items-center justify-center">
-              <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -top-2 -left-2" />
-              <p className="text-[#B8FF4F] text-xl font-semibold">New users can't recieve funds without setup</p>
-            </div>
-
-            <div className="bg-[#0B2818] rounded-4xl relative w-80 h-20 text-center flex items-center justify-center">
-              <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -top-2 -left-2" />
-              <p className="text-[#B8FF4F] text-xl font-semibold">One mistake can permanently loose funds</p>
+        <div className="mx-auto mt-12 flex max-w-7xl flex-col gap-5 px-4 sm:px-6 lg:mt-16 lg:px-10">
+          <FadeIn direction="left" className="rounded-[36px] border-2 border-[#0B2818] bg-[#F7F4EE] p-5 sm:p-7">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+              <div className="relative flex min-h-24 items-center justify-center rounded-3xl bg-[#0B2818] px-5 text-center">
+                <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -left-2 -top-2" />
+                <p className="text-base font-semibold text-[#B8FF4F] sm:text-lg">Wallet addresses are hard to share and easy to mistype.</p>
+              </div>
+              <div className="relative flex min-h-24 items-center justify-center rounded-3xl bg-[#0B2818] px-5 text-center">
+                <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -left-2 -top-2" />
+                <p className="text-base font-semibold text-[#B8FF4F] sm:text-lg">New users cannot receive funds without setup.</p>
+              </div>
+              <div className="relative flex min-h-24 items-center justify-center rounded-3xl bg-[#0B2818] px-5 text-center">
+                <Image alt="dot" src="/bigDot.svg" width={32} height={32} className="absolute -left-2 -top-2" />
+                <p className="text-base font-semibold text-[#B8FF4F] sm:text-lg">One mistake can permanently lose funds.</p>
+              </div>
             </div>
           </FadeIn>
-        </div>
 
-        {/* --- BOX 2 WITH ARROW LINE --- */}
-        <div className="flex items-center w-full mt-30 relative z-10">
-          {/* Solid line expanding from the left edge with arrowhead SVG */}
-          <div className="h-[3px] bg-[#0B2818] flex-grow relative" style={{ transform: 'translateX(-2px)' }}>
-            <svg
-              className="absolute -right-[2px] top-1/2 -translate-y-1/2"
-              width="24"
-              height="24"
-              viewBox="0 0 24 24"
-              fill="none"
-              xmlns="http://www.w3.org/2000/svg"
-            >
-              <path
-                d="M8 4L18 12L8 20"
-                stroke="#0B2818"
-                strokeWidth="3"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </div>
-
-          <FadeIn direction="right" delay={0.2} className="rounded-l-[38px] border-3 border-[#0B2818] shadow-[-8px_8px_0px_0px_#0B2818] h-[120px] w-[800px] bg-[#F7F4EE] p-4 flex flex-col justify-center shrink-0">
-            <p className="font-[outfit] text-[#0B2818] font-bold text-4xl ml-10">Zingpay got you covered!</p>
-            <p className="font-[outfit] text-[#0B2818] text-lg ml-10 mt-1">Send using a phone number. Reciever verifies with OTP and claims instantly.</p>
+          <FadeIn direction="right" delay={0.2} className="rounded-[30px] border-2 border-[#0B2818] bg-[#F7F4EE] p-5 shadow-[-8px_8px_0px_0px_#0B2818] sm:p-7">
+            <p className="font-[outfit] text-2xl font-bold text-[#0B2818] sm:text-3xl md:text-4xl">Zingpay got you covered!</p>
+            <p className="mt-2 text-base text-[#0B2818] sm:text-lg">Send using a phone number. Receiver verifies with OTP and claims instantly.</p>
           </FadeIn>
         </div>
-      </div>
+      </section>
 
-      <div className="relative z-10">
-        <div className="bg-[url(/tiltGrid.svg)] p-30 bg-[#0B2818] bg-cover flex flex-col">
-          <p className="font-[fraunces] text-6xl text-[#B8FF4F] text-center">
-            <span className="font-black" id="how-it-works">How it works</span>
-          </p>
+      <section className="bg-[#0B2818] bg-[url(/tiltGrid.svg)] bg-cover py-14 sm:py-18">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-10">
+          <h2 className="text-center font-[fraunces] text-4xl font-black text-[#B8FF4F] sm:text-5xl md:text-6xl" id="how-it-works">
+            How it works
+          </h2>
 
-          <div className="flex mt-20 w-400 mx-auto justify-center">
-            <FadeIn direction="right" className="flex flex-col bg-[#F7F4EE] border-2 border-[#0B2818] rounded-3xl p-8 z-30 px-20 relative left-10">
-              <div className="flex items-center justify-center space-x-2">
+          <div className="mt-10 grid grid-cols-1 gap-5 lg:grid-cols-3">
+            <FadeIn direction="right" className="rounded-3xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+              <div className="flex items-center justify-center gap-2">
                 <Image alt="step one" src="/one.svg" height={28} width={28} />
-                <p className="text-[#0B2818] font-[fraunces] font-black text-3xl">Enter Details</p>
+                <p className="font-[fraunces] text-2xl font-black text-[#0B2818] sm:text-3xl">Enter Details</p>
               </div>
-              <p className="text-center text-align mt-5 text-xl">Add a phone number and amount.<br /> No wallet required.</p>
+              <p className="mt-4 text-lg text-[#0B2818]">Add a phone number and amount. No wallet required.</p>
             </FadeIn>
 
-            <FadeIn delay={0.2} direction="right" className="flex flex-col shrink-0 bg-[#F7F4EE] border-2 border-[#0B2818] rounded-3xl p-8 z-20 px-20 relative -left-5">
-              <div className="flex items-center justify-center space-x-2">
-                <Image alt="step one" src="/two.png" height={28} width={28} />
-                <p className="text-[#0B2818] font-[fraunces] font-black text-3xl">Enter Details</p>
+            <FadeIn delay={0.2} direction="right" className="rounded-3xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Image alt="step two" src="/two.png" height={28} width={28} />
+                <p className="font-[fraunces] text-2xl font-black text-[#0B2818] sm:text-3xl">Funds Locked</p>
               </div>
-              <p className="text-center text-align mt-5 text-xl">Funds are transferred to a secure <br />escrow contract.</p>
+              <p className="mt-4 text-lg text-[#0B2818]">Funds are transferred to a secure escrow contract.</p>
             </FadeIn>
 
-            <FadeIn delay={0.4} direction="right" className="flex flex-col bg-[#F7F4EE] border-2 border-[#0B2818] rounded-3xl p-8 z-10 px-20 relative -left-20">
-              <div className="flex items-center justify-center space-x-2">
-                <Image alt="step one" src="/three.svg" height={28} width={28} />
-                <p className="text-[#0B2818] font-[fraunces] font-black text-3xl">Reciever Claims</p>
+            <FadeIn delay={0.4} direction="right" className="rounded-3xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+              <div className="flex items-center justify-center gap-2">
+                <Image alt="step three" src="/three.svg" height={28} width={28} />
+                <p className="font-[fraunces] text-2xl font-black text-[#0B2818] sm:text-3xl">Receiver Claims</p>
               </div>
-              <p className="text-center text-align mt-5 text-xl">Reciever verifies with OTP<br /> and claims instantly.</p>
+              <p className="mt-4 text-lg text-[#0B2818]">Receiver verifies with OTP and claims instantly.</p>
             </FadeIn>
-
           </div>
-          <p className="font-[fraunces] text-6xl text-[#B8FF4F] text-center mt-30 mb-50">
-            <span className="font-black" id="features">Features</span>
-          </p>
+
+          <h2 className="mt-14 text-center font-[fraunces] text-4xl font-black text-[#B8FF4F] sm:text-5xl md:text-6xl" id="features">
+            Features
+          </h2>
         </div>
+      </section>
 
-        {/*features*/}
-        <div className="flex relative min-w-screen">
-          <FadeIn className="flex flex-col border-3 bg-[#F7F4EE] border-[#0B2818] items-center rounded-4xl p-4 w-80 relative -top-20 z-30 left-[10%]">
-            <Image
-              alt="features image"
-              src="/map.svg"
-              width={100}
-              height={100}
-            />
-            <p className="font-[fraunces] text-[#0B2818] font-black text-4xl text-center mt-2">Simple & Accessible</p>
-            <p className="font-[outfit] text-[#0B2818] text-wrap text-xl text-center mt-5">Send money using just a phone number. No wallet, no addresses, no setup. OTP verification ensures the right person claims it.</p>
+      <section className="relative mx-auto -mt-8 max-w-7xl px-4 pb-12 sm:-mt-10 sm:px-6 lg:px-10">
+        <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
+          <FadeIn className="rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+            <Image alt="features image" src="/map.svg" width={100} height={100} className="mx-auto" />
+            <p className="mt-3 font-[fraunces] text-3xl font-black text-[#0B2818]">Simple and Accessible</p>
+            <p className="mt-4 text-lg text-[#0B2818]">Send money using just a phone number. No wallet, no addresses, no setup. OTP verification ensures the right person claims it.</p>
           </FadeIn>
 
-          <FadeIn delay={0.2} className="flex flex-col border-3 bg-[#F7F4EE] border-[#0B2818] items-center rounded-4xl p-4 w-80 relative -top-50 z-30 mx-auto">
-            <Image
-              alt="features image"
-              src="/secure.svg"
-              width={100}
-              height={100}
-            />
-            <p className="font-[fraunces] text-[#0B2818] font-black text-4xl text-center mt-2">Secure by Design</p>
-            <p className="font-[outfit] text-[#0B2818] text-wrap text-xl text-center mt-5">Funds are locked in on-chain escrow until claimed. If unclaimed, they are automatically refunded. No risk of loss.</p>
+          <FadeIn delay={0.2} className="rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+            <Image alt="features image" src="/secure.svg" width={100} height={100} className="mx-auto" />
+            <p className="mt-3 font-[fraunces] text-3xl font-black text-[#0B2818]">Secure by Design</p>
+            <p className="mt-4 text-lg text-[#0B2818]">Funds are locked in on-chain escrow until claimed. If unclaimed, they are automatically refunded. No risk of loss.</p>
           </FadeIn>
 
-
-          <FadeIn className="flex flex-col border-3 bg-[#F7F4EE] border-[#0B2818] items-center rounded-4xl p-4 w-80 relative -top-20 z-30 -left-[10%]">
-            <Image
-              alt="features image"
-              src="/fast.svg"
-              width={100}
-              height={100}
-            />
-            <p className="font-[fraunces] text-[#0B2818] font-black text-4xl text-center mt-2">Fast & Transparent</p>
-            <p className="font-[outfit] text-[#0B2818] text-wrap text-xl text-center mt-5">Send money using just a phone number. No wallet, no addresses, no setup. OTP verification ensures the right person claims it.</p>
+          <FadeIn className="rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center">
+            <Image alt="features image" src="/fast.svg" width={100} height={100} className="mx-auto" />
+            <p className="mt-3 font-[fraunces] text-3xl font-black text-[#0B2818]">Fast and Transparent</p>
+            <p className="mt-4 text-lg text-[#0B2818]">Payments move quickly on-chain, and both sender and receiver can track every stage with confidence.</p>
           </FadeIn>
         </div>
 
-        <div className="relative">
-          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-40 z-40">
+        <div className="relative mt-10">
+          <Link href="/flow" className="mx-auto flex w-fit items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#B8FF4F] px-6 py-3 text-xl font-semibold text-[#0B2818] shadow-[0px_4px_0px_0px_#0B2818]">
             <p>View Full Flow</p>
           </Link>
-          <Image
-            alt="hand"
-            src="/hand.svg"
-            width={500}
-            height={900}
-            className="mx-auto relative -top-39 z-10"
-          />
-          <Image
-            alt="star"
-            src="/star.svg"
-            width={109}
-            height={109}
-            className="relative -top-130 left-170 rotate-12"
-          />
-          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-fit flex items-center justify-center mx-auto shadow-[0px_4px_0px_0px_#0B2818] relative -top-155 left-35 rotate-12">
+          <Image alt="hand" src="/hand.svg" width={500} height={900} className="mx-auto mt-6 h-auto w-full max-w-md" />
+          <Image alt="star" src="/star.svg" width={109} height={109} className="absolute right-4 top-6 hidden rotate-12 md:block" />
+          <Link href="/flow" className="absolute bottom-6 right-4 hidden w-fit rotate-6 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#B8FF4F] px-5 py-3 text-xl font-semibold text-[#0B2818] shadow-[0px_4px_0px_0px_#0B2818] md:flex">
             <p>Try it now</p>
           </Link>
         </div>
+      </section>
 
-        {/* TOP BAND: Scrolling Right to Left */}
-        <div className="bg-[#B8FF4F] ml-auto rounded-l-[99px] h-[91px] relative bottom-310 overflow-hidden w-full max-w-[95%] z-20 border-y-2 border-l-2 border-[#0B2818]">
-          <div className="flex animate-marquee-left w-max items-center h-full text-[#0B2818]">
-            <ul className="flex items-center space-x-10 px-5 whitespace-nowrap">
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Send by phone number</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Secure escrow</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">OTP verification</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Refund if unclaimed</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Live status tracking</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Fast, low-cost</p></li>
+      <section className="space-y-4 pb-12">
+        <div className="h-19 w-full overflow-hidden rounded-l-[99px] border-y-2 border-l-2 border-[#0B2818] bg-[#B8FF4F] sm:ml-auto sm:h-22.75 sm:max-w-[95%]">
+          <div className="animate-marquee-left flex h-full w-max items-center text-[#0B2818]">
+            <ul className="font-[fraunces] flex items-center gap-8 whitespace-nowrap px-5 text-xl font-black sm:text-3xl">
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Fast, low-cost</li>
             </ul>
-            <ul className="flex items-center space-x-10 px-5 whitespace-nowrap">
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Send by phone number</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Secure escrow</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">OTP verification</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Refund if unclaimed</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Live status tracking</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Fast, low-cost</p></li>
+            <ul className="font-[fraunces] flex items-center gap-8 whitespace-nowrap px-5 text-xl font-black sm:text-3xl">
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Fast, low-cost</li>
             </ul>
           </div>
         </div>
 
-        {/* BOTTOM BAND: Scrolling Left to Right */}
-        <div className="bg-[#B8FF4F] mr-auto rounded-r-[99px] h-[91px] relative bottom-290 overflow-hidden w-full max-w-[95%] z-20 border-y-2 border-r-2 border-[#0B2818]">
-          <div className="flex animate-marquee-right w-max items-center h-full text-[#0B2818]">
-            <ul className="flex items-center space-x-10 px-5 whitespace-nowrap">
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Refund if unclaimed</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Live status tracking</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Fast, low-cost</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Send by phone number</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Secure escrow</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">OTP verification</p></li>
+        <div className="h-19 w-full overflow-hidden rounded-r-[99px] border-y-2 border-r-2 border-[#0B2818] bg-[#B8FF4F] sm:mr-auto sm:h-22.75 sm:max-w-[95%]">
+          <div className="animate-marquee-right flex h-full w-max items-center text-[#0B2818]">
+            <ul className="font-[fraunces] flex items-center gap-8 whitespace-nowrap px-5 text-xl font-black sm:text-3xl">
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>OTP verification</li>
             </ul>
-            <ul className="flex items-center space-x-10 px-5 whitespace-nowrap">
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Refund if unclaimed</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Live status tracking</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Fast, low-cost</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Send by phone number</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">Secure escrow</p></li>
-              <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} /></li>
-              <li><p className="font-[fraunces] font-black text-3xl">OTP verification</p></li>
+            <ul className="font-[fraunces] flex items-center gap-8 whitespace-nowrap px-5 text-xl font-black sm:text-3xl">
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} /></li><li>OTP verification</li>
             </ul>
           </div>
         </div>
+      </section>
 
-      </div>
-
-      <FadeIn className="flex flex-wrap justify-around relative -top-140">
-        <Image alt="nwe-users" src="/newUsers.svg" width={600} height={120} />
-        <Image alt="crypto-users" src="/cryptoUsers.svg" width={600} height={120} />
+      <FadeIn className="mx-auto grid max-w-7xl grid-cols-1 gap-4 px-4 pb-12 sm:px-6 lg:grid-cols-2 lg:px-10">
+        <Image alt="new users" src="/newUsers.svg" width={600} height={120} className="h-auto w-full" />
+        <Image alt="crypto users" src="/cryptoUsers.svg" width={600} height={120} className="h-auto w-full" />
       </FadeIn>
 
-      <div className="flex flex-col">
-        <FadeIn className="relative">
-          <Image
-            alt="Security without compromise"
-            src="/security.svg"
-            width={931}
-            height={538}
-            id="security"
-            className="block mx-auto -top-100 relative"
-          />
-          <Link href="/flow" className="bg-[#B8FF4F] border-2 border-[#0B2818] font-[outfit] text-[#0B2818] font-semibold text-2xl p-4 rounded-3xl w-60 flex items-center justify-center shadow-[0px_4px_0px_0px_#0B2818] relative -top-130 mr-auto left-110">
-            <p>Try it now</p>
-          </Link>        </FadeIn>
-        <div className="flex space-x-20 mx-auto relative -top-100">
-          <div className="flex flex-col items-center justify-center w-fit h-[50px] bg-[#0B2818] rounded-4xl p-5 text-white text-xl font-semibold">
+      <section className="mx-auto max-w-7xl px-4 pb-16 sm:px-6 lg:px-10" id="security">
+        <FadeIn>
+          <Image alt="Security without compromise" src="/security.svg" width={931} height={538} className="mx-auto h-auto w-full" />
+          <div className="mt-6 flex justify-center">
+            <Link href="/flow" className="flex w-fit items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#B8FF4F] px-6 py-3 text-xl font-semibold text-[#0B2818] shadow-[0px_4px_0px_0px_#0B2818]">
+              <p>Try it now</p>
+            </Link>
+          </div>
+        </FadeIn>
+
+        <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2">
+          <div className="flex min-h-14 items-center justify-center rounded-4xl bg-[#0B2818] px-5 text-center text-base font-semibold text-white sm:text-lg">
             <p>You stay in control, non-custodial, on-chain escrow.</p>
           </div>
-          <div className="flex flex-col items-center justify-center w-fit h-[50px] bg-[#0B2818] rounded-4xl p-5 text-white text-xl font-semibold">
-            <p>Safe from errors: OTP secured claims, auto-expiry refunds.
-            </p>
+          <div className="flex min-h-14 items-center justify-center rounded-4xl bg-[#0B2818] px-5 text-center text-base font-semibold text-white sm:text-lg">
+            <p>Safe from errors: OTP secured claims, auto-expiry refunds.</p>
           </div>
         </div>
-      </div>
+      </section>
 
-      <div className="bg-[#0B2818] -mt-60 p-10 flex flex-col items-center justify-center ">
-        <Image
-          alt="zingpay"
-          src="/zingpay.svg"
-          width={130}
-          height={37}
-          className="block mx-auto"
-        />
-        <p className="text-white text-lg font-normal mt-4 font-[outfit] font-semibold">
+      <footer className="bg-[#0B2818] px-4 py-10 text-center sm:px-6 lg:px-10">
+        <Image alt="zingpay" src="/zingpay.svg" width={130} height={37} className="mx-auto" />
+        <p className="mt-4 text-base font-semibold text-white sm:text-lg">
           No downloads, No signups, Just open the app and go!
         </p>
-        <Link href="/send" className="bg-[#B8FF4F] rounded-3xl p-3 mt-10">
-          <p className="text-[#0B2818] font-semibold w-35 text-align text-center text-xl">OpenApp</p>
+        <Link href="/send" className="mt-8 inline-flex rounded-3xl bg-[#B8FF4F] px-6 py-3">
+          <p className="text-xl font-semibold text-[#0B2818]">OpenApp</p>
         </Link>
-      </div>
-
+      </footer>
     </div>
   );
 }
