@@ -271,7 +271,7 @@ export default function LandingPage() {
           </div>
         </FadeIn>
 
-        <div className="mt-8 grid grid-cols-1 gap-3 md:grid-cols-2">
+        <div className="mt-8 grid grid-cols-1 gap-3 lg:grid-cols-2">
           <div className="flex min-h-10 items-center justify-center rounded-4xl bg-[#0B2818] px-2 text-center text-xs font-semibold text-white sm:text-lg">
             <p>You stay in control, non-custodial, on-chain escrow.</p>
           </div>
