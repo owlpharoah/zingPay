@@ -41,6 +41,8 @@
 
 @theme {
   --font-fraunces: var(--font-fraunces), serif;
+  --font-jersey: var(--font-jersey), sans-serif;
+  --font-outfit: var(--font-outfit), sans-serif;
 }
 
 
