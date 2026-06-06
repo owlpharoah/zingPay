@@ -8,7 +8,7 @@ import { useState, useEffect, useRef } from "react";
 export default function LandingPage() {
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const menuRef = useRef(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -104,7 +104,7 @@ export default function LandingPage() {
           </div>
           <FadeIn>
             <div className="mx-auto w-full sm:mx-0 sm:w-auto lg:flex lg:justify-end">
-              <Image alt="zingpay hero logo" src="/zingPay_hero.svg" width={341} height={324.75} className="h-auto w-full lg:w-[553.37px] lg:h-[527px]" />
+              <Image alt="zingpay hero logo" src="/zingPay_hero.svg" width={341} height={324.75} className="h-auto w-full lg:w-[553.37px] lg:h-131.75" />
             </div>
           </FadeIn>
         </div>
@@ -177,19 +177,19 @@ export default function LandingPage() {
 
       <section className="relative mx-auto -mt-9 max-w-7xl px-4 pb-12 sm:-mt-10 sm:px-6 lg:px-10">
         <div className="flex flex-col lg:grid lg:gap-5 lg:grid-cols-3">
-          <FadeIn className="rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-[300px] lg:h-[370px] lg:-mt-5 max-lg:z-3">
+          <FadeIn className="rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-75 lg:h-92.5 lg:-mt-5 max-lg:z-3">
             <Image alt="features image" src="/map.svg" width={100} height={100} className="mx-auto" />
             <p className="mt-3 font-jersey text-3xl font-black text-[#0B2818]">Simple and Accessible</p>
             <p className="mt-4 text-lg text-[#0B2818]">Send money using just a phone number. No wallet, no addresses, no setup. OTP verification ensures the right person claims it.</p>
           </FadeIn>
 
-          <FadeIn delay={0.2} className="rounded-b-4xl -mt-8 max-lg:z-2 lg:rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-[300px] lg:h-[370px] lg:-mt-25">
+          <FadeIn delay={0.2} className="rounded-b-4xl -mt-8 max-lg:z-2 lg:rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-75 lg:h-92.5 lg:-mt-25">
             <Image alt="features image" src="/secure.svg" width={100} height={100} className="mx-auto mt-5" />
             <p className="mt-3 font-jersey text-3xl font-black text-[#0B2818]">Secure by Design</p>
             <p className="mt-4 text-lg text-[#0B2818]">Funds are locked in on-chain escrow until claimed. If unclaimed, they are automatically refunded. No risk of loss.</p>
           </FadeIn>
 
-          <FadeIn delay={0.4} className="rounded-b-4xl -mt-8 max-lg:z-1 lg:rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-[300px] lg:h-[370px] lg:-mt-5">
+          <FadeIn delay={0.4} className="rounded-b-4xl -mt-8 max-lg:z-1 lg:rounded-4xl border-2 border-[#0B2818] bg-[#F7F4EE] p-6 text-center md:mx-auto lg:w-75 lg:h-92.5 lg:-mt-5">
             <Image alt="features image" src="/fast.svg" width={100} height={100} className="mx-auto mt-5" />
             <p className="mt-3 font-jersey text-3xl font-black text-[#0B2818]">Fast and Transparent</p>
             <p className="mt-4 text-lg text-[#0B2818]">Payments move quickly on-chain, and both sender and receiver can track every stage with confidence.</p>
@@ -200,7 +200,7 @@ export default function LandingPage() {
           <Link href="/flow" className="mx-auto flex w-fit items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#192FFD] px-6 py-3 text-xl font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818]">
             <p>View Full Flow</p>
           </Link>
-          <Image alt="hand" src="/hand.svg" width={500} height={900} className="relative mx-auto mt-6 h-auto w-full max-w-md z-0 max-sm:w-60 max-sm:-mt-0" />
+          <Image alt="hand" src="/hand.svg" width={500} height={900} className="relative mx-auto mt-6 h-auto w-full max-w-md z-0 max-sm:w-60 max-sm:mt-0" />
         </div>
       </section>
 
@@ -208,20 +208,20 @@ export default function LandingPage() {
         <div className="h-14 max-w-[90%] ml-auto overflow-hidden rounded-l-[99px] border-y-2 border-l-2 border-[#0B2818] bg-[#B8FF4F] sm:ml-auto sm:h-22.75 sm:max-w-[90%]">
           <div className="animate-marquee-left flex h-full w-max items-center text-[#0B2818]">
             <ul className="font-jersey flex items-center gap-8 whitespace-nowrap px-5 text-sm font-black sm:text-3xl">
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Send by phone number</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Secure escrow</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>OTP verification</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Refund if unclaimed</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Live status tracking</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Fast, low-cost</li>
             </ul>
             <ul className="font-jersey flex items-center gap-8 whitespace-nowrap px-5 text-sm font-black sm:text-3xl">
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Send by phone number</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Secure escrow</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>OTP verification</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Refund if unclaimed</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Live status tracking</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Fast, low-cost</li>
             </ul>
           </div>
         </div>
@@ -229,33 +229,33 @@ export default function LandingPage() {
         <div className="h-14 max-w-[90%] mr-auto overflow-hidden rounded-r-[99px] border-y-2 border-r-2 border-[#0B2818] bg-[#B8FF4F] sm:mr-auto sm:h-22.75 sm:max-w-[95%]">
           <div className="animate-marquee-right flex h-full w-max items-center text-[#0B2818]">
             <ul className="font-jersey flex items-center gap-8 whitespace-nowrap px-5 text-sm font-black sm:text-3xl">
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Refund if unclaimed</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Live status tracking</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Fast, low-cost</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Send by phone number</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Secure escrow</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>OTP verification</li>
             </ul>
             <ul className="font-jersey flex items-center gap-8 whitespace-nowrap px-5 text-sm font-black sm:text-3xl">
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Refund if unclaimed</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Live status tracking</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Fast, low-cost</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Send by phone number</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>Secure escrow</li>
-              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-[14px] max-sm:h-[14px]"/></li><li>OTP verification</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Refund if unclaimed</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Live status tracking</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Fast, low-cost</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Send by phone number</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>Secure escrow</li>
+              <li><Image alt="dot" src="/cardDot.svg" width={24} height={24} className="max-sm:w-3.5 max-sm:h-3.5"/></li><li>OTP verification</li>
             </ul>
           </div>
         </div>
 
-        <div className="relative left-1/2 right-1/2 top-20 sm:top-60 md:top-50">
-          <Image alt="star" src="/favicon.svg" width={109} height={109} className="relative right-20 sm:right-30 top-8 block rotate-12 w-[61px] h-[61px] sm:w-[100px] sm:h-[100px]" />
+        <div className="relative left-1/2 right-1/2 top-26 sm:top-60 md:top-50">
+          <Image alt="star" src="/favicon.svg" width={109} height={109} className="relative right-20 sm:right-30 top-8 block rotate-12 w-15.25 h-15.25 sm:w-25 sm:h-25" />
           <Link href="/flow" className="relative -top-8 text-sm sm:-top-15 sm:left-3 w-fit rotate-6 items-center justify-center rounded-3xl  bg-[#192FFD] px-5 py-3 sm:text-xl font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818] flex">
             <p>Try it now</p>
           </Link>
         </div>
       </section>
 
-      <FadeIn className="mx-auto -mt-112 sm:-mt-140 grid max-w-7xl grid-cols-1 gap-4 px-4 pb-12 sm:px-6 lg:grid-cols-2 lg:px-10">
+      <FadeIn className="mx-auto -mt-108 sm:-mt-140 grid max-w-7xl grid-cols-1 gap-4 px-4 pb-12 sm:px-6 lg:grid-cols-2 lg:px-10">
         <Image alt="new users" src="/newUsers.svg" width={600} height={120} className="h-auto w-full" />
         <Image alt="crypto users" src="/cryptoUsers.svg" width={600} height={120} className="h-auto w-full" />
       </FadeIn>
@@ -286,7 +286,7 @@ export default function LandingPage() {
         <p className="mt-4 text-xs font-[outfit] font-semibold text-white sm:text-lg">
           No downloads, No signups, Just open the app and go!
         </p>
-        <Link href="/send" className="mt-8 inline-flex rounded-3xl bg-[#192FFD] px-6 py-3 border-white border-1">
+        <Link href="/send" className="mt-8 inline-flex rounded-3xl bg-[#192FFD] px-6 py-3 border-white border">
           <p className="text-xl font-semibold text-white">Open The App</p>
         </Link>
       </footer>

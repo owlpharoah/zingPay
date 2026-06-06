@@ -1,7 +1,5 @@
 "use client"
 import { useEffect, useState } from "react"
-import "@fontsource/fraunces"
-import "@fontsource/outfit"
 import Image from "next/image"
 import Link from "next/link"
 import AppNav from "@/components/AppNav"
@@ -384,8 +382,8 @@ export default function Send() {
 
       {/* --- MAIN MIDDLE SECTION --- */}
       <main className="max-w-3xl mx-auto px-6 max-sm:px-4 py-12 max-sm:py-6 z-10 relative">
-        <h1 className="text-5xl max-sm:text-3xl text-[#0B2818] font-[fraunces] font-black mb-2 tracking-tight">
-          Send money <span className="italic font-normal">Instantly.</span>
+        <h1 className="text-5xl max-sm:text-3xl text-[#0B2818] font-jersey font-normal mb-2 tracking-tight">
+          Send Money Instantly.
         </h1>
         <p className="text-[#6B7280] text-sm md:text-base max-sm:text-xs mb-8 max-sm:mb-6 font-medium">
           Phone number only. No wallet needed on their end.
@@ -540,7 +538,7 @@ export default function Send() {
             <button
               type="submit"
               disabled={status === "sending" || !publicKey || (currency !== "SOL" && (!!rateError || rateLoading))}
-              className="w-full mt-8 max-sm:mt-6 bg-[#B8FF4F] hover:bg-[#a6f03e] text-[#0B2818] text-lg max-sm:text-base font-bold py-4 max-sm:py-3.5 rounded-2xl border-2 border-[#0B2818] shadow-[0_4px_0_0_#0B2818] active:shadow-none active:translate-y-1 transition-all duration-150 relative z-30 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full mt-8 max-sm:mt-6 bg-[#192FFD] hover:bg-[#192FFD] text-white text-lg max-sm:text-base font-bold py-4 max-sm:py-3.5 rounded-2xl border-2 border-[#0B2818] shadow-[0_4px_0_0_#0B2818] active:shadow-none active:translate-y-1 transition-all duration-150 relative z-30 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {!publicKey
                 ? "Connect wallet to send"
@@ -603,46 +601,6 @@ export default function Send() {
         )}
       </main>
       {/* --- END MAIN MIDDLE SECTION --- */}
-
-      {/* BOTTOM BAND: Scrolling Left */}
-      <div className="bg-[#B8FF4F] ml-auto rounded-l-[99px] max-sm:rounded-l-full h-[91px] max-sm:h-[60px] relative mt-12 max-sm:mt-6 overflow-hidden w-full max-w-[95%] z-20 border-y-2 border-l-2 border-[#0B2818]">
-        <div className="flex animate-marquee-left w-max items-center h-full text-[#0B2818]">
-          <ul className="flex items-center space-x-10 max-sm:space-x-6 px-5 max-sm:px-3 whitespace-nowrap">
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Send by phone number</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Secure escrow</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">OTP verification</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Refund if unclaimed</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Live status tracking</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Fast, low-cost</p></li>
-          </ul>
-        </div>
-      </div>
-
-      {/* BOTTOM BAND: Scrolling Right */}
-      <div className="bg-[#B8FF4F] mr-auto rounded-r-[99px] max-sm:rounded-r-full h-[91px] max-sm:h-[60px] relative mt-6 max-sm:mt-4 mb-16 max-sm:mb-10 overflow-hidden w-full max-w-[95%] z-20 border-y-2 border-r-2 border-[#0B2818]">
-        <div className="flex animate-marquee-right w-max items-center h-full text-[#0B2818]">
-          <ul className="flex items-center space-x-10 max-sm:space-x-6 px-5 max-sm:px-3 whitespace-nowrap">
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Refund if unclaimed</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Live status tracking</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Fast, low-cost</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Send by phone number</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">Secure escrow</p></li>
-            <li><Image alt="dot" src="/cardDot.svg" width={28} height={28} className="max-sm:w-5 max-sm:h-5" /></li>
-            <li><p className="font-[fraunces] font-black text-3xl max-sm:text-xl">OTP verification</p></li>
-          </ul>
-        </div>
-      </div>
 
       {/* Footer */}
       <div className="bg-[#0B2818] p-10 max-sm:p-6 flex flex-col items-center justify-center shrink-0">
