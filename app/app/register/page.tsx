@@ -1,9 +1,8 @@
 "use client"
-import "@fontsource/fraunces";
-import "@fontsource/outfit";
+
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AppNav from "@/components/AppNav";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
@@ -275,7 +274,7 @@ export default function Register() {
             <p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p>
           </div>
         </Link>
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
+        <Image alt="zingpay" src="/zinPay_logo.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
         <WalletDropdown />
       </div>
 
@@ -288,9 +287,9 @@ export default function Register() {
 
             {/* Progress Bar */}
             <div className="flex justify-center space-x-4 max-sm:space-x-2 w-full mb-12 max-sm:mb-6 z-10 relative">
-              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 0 ? "bg-[#B8FF4F]" : "bg-[#0B2818]"}`} />
-              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 0 ? "bg-gray-200" : step === 1 ? "bg-[#B8FF4F]" : "bg-[#0B2818]"}`} />
-              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 2 ? "bg-[#B8FF4F]" : "bg-gray-200"}`} />
+              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 0 ? "bg-[#192FFD]" : "bg-[#0B2818]"}`} />
+              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 0 ? "bg-gray-200" : step === 1 ? "bg-[#192FFD]" : "bg-[#0B2818]"}`} />
+              <div className={`h-3 max-sm:h-2.5 w-32 max-sm:w-16 rounded-full transition-colors duration-300 ${step === 2 ? "bg-[#192FFD]" : "bg-gray-200"}`} />
             </div>
 
             {/* Sliding Content */}
@@ -342,7 +341,7 @@ export default function Register() {
             {step === 0 && (
               <button
                 onClick={nextStep}
-                className="w-full bg-[#B8FF4F] border-2 border-[#0B2818] text-[#0B2818] font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all"
+                className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all"
               >
                 Get Started
               </button>
@@ -353,7 +352,7 @@ export default function Register() {
                 <button
                   onClick={handleSendOtp}
                   disabled={registerState === "sending_otp" || !publicKey}
-                  className="w-full bg-[#B8FF4F] border-2 border-[#0B2818] text-[#0B2818] font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all disabled:opacity-50"
+                  className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all disabled:opacity-50"
                 >
                   {!publicKey ? "Connect wallet first" : registerState === "sending_otp" ? "Sending code..." : "Send verification code"}
                 </button>
@@ -406,20 +405,18 @@ function WelcomeView() {
   return (
     <div className="flex flex-col items-center justify-center text-center h-full mt-2 max-sm:mt-0">
       <div className="border border-[#0B2818] rounded-full px-4 max-sm:px-3 py-1 max-sm:py-0.5 text-sm max-sm:text-[10px] font-semibold flex items-center space-x-2 mb-6 max-sm:mb-4">
-        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#B8FF4F]"></div>
+        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#192FFD]"></div>
         <span className="text-[#0B2818]">WELCOME TO ZINGPAY</span>
       </div>
       <h1 className="font-[fraunces] text-5xl max-sm:text-3xl max-sm:leading-[1.1] font-black text-[#0B2818] mb-4 max-sm:mb-3">
         Money that moves <br /><span className="italic font-light">like a message.</span>
       </h1>
-      <p className="text-gray-500 mb-8 max-sm:mb-5 max-w-xl text-lg max-sm:text-sm px-2">
+      <p className="text-gray-500 max-w-xl text-lg max-sm:text-sm px-2">
         Send money anywhere in the world using just a phone number. No bank accounts, no wallet addresses, no complicated setup.
       </p>
-      <div className="bg-[#0B2818] w-full max-w-2xl rounded-[40px] max-sm:rounded-3xl flex flex-col items-center justify-center p-10 max-sm:p-6 mt-auto">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="mb-4 max-sm:mb-2 w-16 h-16 max-sm:w-10 max-sm:h-10">
-          <path d="M22 2L11 13M22 2L15 22L11 13M22 2L2 9L11 13" stroke="#B8FF4F" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
-        </svg>
-        <p className="text-white text-lg max-sm:text-base font-semibold">Type a number. Hit send. Done.</p>
+      <div className="relative w-full max-w-2xl flex flex-col items-center justify-center lg:-mt-2">
+        <Image alt="solana coin" src="/sol_coin.svg" width={200} height={200} className="max-sm:w-[150px] max-sm:h-[150px]"/>
+        <p className="relative text-black text-lg max-sm:text-base lg:-mt-5">Type a number. Hit send. Done.</p>
       </div>
     </div>
   );
@@ -436,15 +433,15 @@ function PhoneView({
   setPhoneInput: (val: string) => void;
 }) {
   return (
-    <div className="flex flex-col h-full text-left px-8 max-sm:px-2 py-4 max-sm:py-0">
-      <div className="border border-[#0B2818] rounded-full px-4 max-sm:px-3 py-1 max-sm:py-0.5 text-sm max-sm:text-[10px] font-semibold flex items-center space-x-2 w-fit mb-8 max-sm:mb-4">
-        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#B8FF4F]"></div>
+    <div className="flex flex-col h-full text-left px-8 max-sm:px-2 py-4 max-sm:py-0 max-sm:mt-5">
+      <div className="border border-[#0B2818] rounded-full px-4 max-sm:px-3 py-1 max-sm:py-0.5 text-sm max-sm:text-[10px] font-semibold flex items-center space-x-2 w-fit mb-8 max-sm:mb-4 max-sm:mt-2">
+        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#192FFD]"></div>
         <span className="text-[#0B2818]">STEP 1 OF 2</span>
       </div>
-      <h1 className="font-[fraunces] text-5xl max-sm:text-3xl max-sm:leading-[1.1] font-black text-[#0B2818] mb-2 max-sm:mb-1">
-        What's your <br /><span className="italic font-light">number?</span>
+      <h1 className="font-jersey font-normal text-5xl max-sm:text-3xl max-sm:leading-[1.1] max-sm:text-center text-[#0B2818] mb-2 max-sm:mb-1">
+        What's your number?
       </h1>
-      <p className="text-gray-500 mb-10 max-sm:mb-6 text-lg max-sm:text-sm">
+      <p className="text-gray-500 mb-10 max-sm:mb-6 text-lg max-sm:text-sm max-sm:text-center">
         We'll verify it with a one-time code. This is your identity on ZingPay, no username or email required.
       </p>
       <div className="w-full max-w-xl">
@@ -479,7 +476,7 @@ function PhoneView({
             placeholder="Enter phone number"
             value={phoneInput}
             onChange={(e) => setPhoneInput(e.target.value)}
-            className="flex-grow w-full px-4 max-sm:px-3 text-lg max-sm:text-base outline-none bg-transparent rounded-r-2xl font-[outfit]"
+            className="grow w-full px-4 max-sm:px-3 text-lg max-sm:text-xs outline-none bg-transparent rounded-r-2xl font-[outfit]"
             onFocus={() => setIsDropdownOpen(false)}
           />
         </div>
@@ -492,7 +489,11 @@ function PhoneView({
 }
 
 function OtpView({
-  phoneE164, otpCode, setOtpCode, onResend, registerState,
+  phoneE164,
+  otpCode,
+  setOtpCode,
+  onResend,
+  registerState,
 }: {
   phoneE164: string;
   otpCode: string;
@@ -500,43 +501,103 @@ function OtpView({
   onResend: () => void;
   registerState: RegisterState;
 }) {
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
+    // Move to the previous input on Backspace if the current input is empty
+    if (e.key === "Backspace" && !otpCode[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleChange = (value: string, index: number) => {
+    // Allow only numeric input
+    if (!/^[0-9]*$/.test(value)) return;
+
+    const newOtp = otpCode.split("").slice(0, 6);
+    // Pad array if shorter than 6 to avoid out of bounds
+    while (newOtp.length < 6) newOtp.push(""); 
+
+    newOtp[index] = value.substring(value.length - 1);
+    const combined = newOtp.join("");
+    setOtpCode(combined);
+
+    // Automatically move focus to the next input if a number was typed
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData
+      .getData("text/plain")
+      .replace(/\D/g, "")
+      .slice(0, 6);
+      
+    setOtpCode(pastedData);
+    
+    // Jump focus to the end or the next available empty slot
+    if (pastedData.length === 6) {
+      inputRefs.current[5]?.focus();
+    } else if (pastedData.length > 0) {
+      inputRefs.current[pastedData.length]?.focus();
+    }
+  };
+
   return (
-    <div className="flex flex-col h-full text-left px-8 max-sm:px-2 py-4 max-sm:py-0">
+    <div className="flex flex-col h-full text-left max-sm:text-center max-sm:items-center px-7 max-sm:px-1 py-4 max-sm:py-0">
       <div className="border border-[#0B2818] rounded-full px-4 max-sm:px-3 py-1 max-sm:py-0.5 text-sm max-sm:text-[10px] font-semibold flex items-center space-x-2 w-fit mb-8 max-sm:mb-4">
-        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#B8FF4F]"></div>
+        <div className="w-2 h-2 max-sm:w-1.5 max-sm:h-1.5 rounded-full bg-[#192FFD]"></div>
         <span className="text-[#0B2818]">STEP 2 OF 2</span>
       </div>
-      <h1 className="font-[fraunces] text-5xl max-sm:text-3xl max-sm:leading-[1.1] font-black text-[#0B2818] mb-2 max-sm:mb-1">
-        Check your <br /><span className="italic font-light">messages.</span>
+      
+      <h1 className="font-jersey font-normal text-5xl mt-8 max-sm:text-4xl max-sm:leading-[1.1] text-[#0B2818] mb-2 max-sm:mb-1">
+        Check your messages.
       </h1>
+      
       <p className="text-gray-500 mb-10 max-sm:mb-6 text-lg max-sm:text-sm">
-        We sent a 6-digit code to {phoneE164 || "your number"} via SMS.
+        We sent a 6-digit code to {phoneE164 || "your number"}
+        <span className="max-sm:hidden"> via SMS.</span>
+        <span className="hidden max-sm:inline">.<br />The code expires shortly, so enter it soon.</span>
       </p>
-      <div className="w-full max-w-xl">
-        <label className="text-sm max-sm:text-xs font-bold text-gray-700 mb-2 max-sm:mb-1.5 block tracking-wider">VERIFICATION CODE</label>
-        <div className="flex border-2 border-[#0B2818] rounded-2xl overflow-hidden h-16 max-sm:h-14">
-          <input
-            type="text"
-            placeholder="OXXXXX"
-            value={otpCode}
-            onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-            className="flex-grow px-6 max-sm:px-4 text-xl max-sm:text-lg tracking-[0.5em] max-sm:tracking-[0.3em] outline-none font-[outfit] font-semibold"
-            maxLength={6}
-            autoFocus
-          />
-        </div>
-        <div className="flex justify-center mt-6 max-sm:mt-4">
-          <button
-            type="button"
-            onClick={onResend}
-            disabled={registerState === "sending_otp"}
-            className="flex items-center text-gray-500 hover:text-[#0B2818] text-sm max-sm:text-xs font-semibold space-x-2 transition-colors disabled:opacity-50"
-          >
-            <div className="w-8 h-8 max-sm:w-6 max-sm:h-6 rounded-full border border-gray-300 flex items-center justify-center">
-              <span className="text-xs max-sm:text-[10px]">&#x221e;</span>
-            </div>
-            <span>{registerState === "sending_otp" ? "Sending..." : "Resend Code"}</span>
-          </button>
+
+      <div className="w-full max-w-xl max-sm:flex max-sm:flex-col max-sm:items-center">
+        <label className="text-sm max-sm:text-xs font-bold text-gray-700 mb-4 max-sm:mb-3 block tracking-wider uppercase">
+          6-Digit Verification Code
+        </label>
+
+        {/* Input container wrapped to allow "Resend Code" to center correctly below it */}
+        <div className="inline-block max-sm:flex max-sm:flex-col max-sm:items-center">
+          <div className="flex gap-4 max-sm:gap-1 mb-8 max-sm:mb-6">
+            {[0, 1, 2, 3, 4, 5].map((index) => (
+              <input
+                key={index}
+                ref={(el) => {
+                  inputRefs.current[index] = el;
+                }}
+                type="text"
+                inputMode="numeric"
+                maxLength={1}
+                value={otpCode[index] || ""}
+                onChange={(e) => handleChange(e.target.value, index)}
+                onKeyDown={(e) => handleKeyDown(e, index)}
+                onPaste={handlePaste}
+                className="w-[60px] h-[60px] max-sm:w-[35px] max-sm:h-[35px] max-sm:rounded-xl border-2 border-gray-200 focus:border-[#192FFD] rounded-2xl text-center text-2xl max-sm:text-xl font-bold text-[#0B2818] outline-none transition-colors"
+              />
+            ))}
+          </div>
+
+          <div className="md:absolute md:bottom-0  flex justify-center w-full">
+            <button
+              type="button"
+              onClick={onResend}
+              disabled={registerState === "sending_otp"}
+              className="text-[#192FFD] font-bold text-lg max-sm:text-base hover:opacity-80 transition-opacity disabled:opacity-50"
+            >
+              {registerState === "sending_otp" ? "Sending..." : "Resend Code"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
