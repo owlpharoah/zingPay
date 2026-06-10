@@ -27,7 +27,7 @@ export default function LandingPage() {
       <header className="bg-[#0B2818]">
         <div className="mx-auto flex max-w-7xl max-lg:justify-between gap-4 px-4 py-5 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-10">
           <Link href="/">
-            <Image alt="zingpay logo" src="/zinPay_logo.svg" width={75.7} height={26.5} />
+            <Image alt="zingpay logo" src="/zingpay.svg" width={75.7} height={26.5} />
           </Link>
 
           <ul className="hidden lg:flex flex-wrap items-center gap-x-6 gap-y-2 text-sm sm:text-base lg:text-xl">
@@ -282,7 +282,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="bg-[#0B2818] px-4 py-10 text-center sm:px-6 lg:px-10">
-        <Image alt="zingpay" src="/zinPay_logo.svg" width={130} height={37} className="mx-auto" />
+        <Image alt="zingpay" src="/zingpay.svg" width={130} height={37} className="mx-auto" />
         <p className="mt-4 text-xs font-[outfit] font-semibold text-white sm:text-lg">
           No downloads, No signups, Just open the app and go!
         </p>

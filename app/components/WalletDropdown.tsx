@@ -12,10 +12,10 @@ export function WalletDropdown() {
     <div className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
-        className="p-4 max-sm:p-2 max-sm:px-3 flex items-center bg-[#B8FF4F] rounded-4xl space-x-2 cursor-pointer transition-transform active:scale-95"
+        className="p-4 max-sm:p-2 max-sm:px-3 flex items-center bg-[#192FFD] rounded-4xl space-x-2 cursor-pointer transition-transform active:scale-95"
       >
         <Image alt="wallet icon" src="/wallet.svg" width={18} height={18} className="max-sm:w-4 max-sm:h-4" />
-        <p className="text-[#0B2818] font-[outfit] font-semibold max-sm:text-xs">
+        <p className="text-white font-[outfit] font-semibold max-sm:text-xs">
           {publicKey
             ? `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`
             : "Connect Wallet"}

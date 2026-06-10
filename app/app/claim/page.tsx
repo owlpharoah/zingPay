@@ -1,39 +1,48 @@
 "use client";
 
-import React, { useState, useEffect, useRef, Suspense } from "react";
-import Image from "next/image";
-import Link from "next/link";
+import React, { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { Bell, AlertCircle, ChevronDown, Check, ShieldCheck, Clock, Smartphone, X } from "lucide-react";
-import "@fontsource/fraunces";
-import "@fontsource/outfit";
 import AppNav from "@/components/AppNav";
+import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SendTransactionError, Transaction } from "@solana/web3.js";
 import { CountryCode } from "libphonenumber-js";
 import { BACKEND_URL } from "@/lib/constants";
 import { downloadSecretKey, generateClaimKeypair } from "@/lib/walletless";
-import { normalizeToE164 } from "@/lib/phone";
+import { normalizeToE164, getDialOption, DialOption } from "@/lib/phone";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { WalletDropdown } from "@/components/WalletDropdown";
 
-// --- Country Codes Data ---
-const COUNTRY_CODES = [
-  { code: "IN" as CountryCode, dial: "+91", name: "India" },
-  { code: "US" as CountryCode, dial: "+1", name: "United States" },
-  { code: "GB" as CountryCode, dial: "+44", name: "United Kingdom" },
-  { code: "CA" as CountryCode, dial: "+1", name: "Canada" },
-  { code: "AU" as CountryCode, dial: "+61", name: "Australia" },
-  { code: "DE" as CountryCode, dial: "+49", name: "Germany" },
-  { code: "FR" as CountryCode, dial: "+33", name: "France" },
-  { code: "JP" as CountryCode, dial: "+81", name: "Japan" },
-  { code: "SG" as CountryCode, dial: "+65", name: "Singapore" },
-  { code: "AE" as CountryCode, dial: "+971", name: "UAE" },
-  { code: "BR" as CountryCode, dial: "+55", name: "Brazil" },
-  { code: "NG" as CountryCode, dial: "+234", name: "Nigeria" },
-  { code: "KE" as CountryCode, dial: "+254", name: "Kenya" },
-  { code: "ZA" as CountryCode, dial: "+27", name: "South Africa" },
-  { code: "PH" as CountryCode, dial: "+63", name: "Philippines" },
-];
+// Country selector styled to match the claim page's inputs. Used in both the
+// inline OTP prompt and the detail view.
+function ClaimCountrySelect({ value, onChange }: { value: CountryCode; onChange: (opt: DialOption) => void }) {
+  return (
+    <CountryCodeSelect
+      value={value}
+      onChange={onChange}
+      className="relative shrink-0"
+      triggerClassName={(open) =>
+        `border rounded-xl max-sm:rounded-lg px-3 max-sm:px-2 py-3 max-sm:py-2.5 flex items-center bg-white min-w-[80px] max-sm:min-w-[70px] justify-between gap-1 transition-colors font-[outfit] ${open ? "border-[#B8FF4F] ring-2 ring-[#B8FF4F]" : "border-gray-300"}`
+      }
+      menuClassName="absolute top-full left-0 mt-1 w-[240px] max-sm:w-[210px] bg-white border border-gray-200 rounded-xl max-sm:rounded-lg shadow-xl z-50 flex flex-col overflow-hidden font-[outfit]"
+      renderTrigger={(opt, open) => (
+        <>
+          <span className="text-sm max-sm:text-xs font-bold text-[#0B2818]">{opt.code}</span>
+          <span className="text-sm max-sm:text-xs text-gray-600">{opt.dial}</span>
+          <ChevronDown className={`w-4 h-4 max-sm:w-3 max-sm:h-3 text-gray-400 transition-transform ${open ? "rotate-180" : ""}`} />
+        </>
+      )}
+      renderOption={(opt) => (
+        <>
+          <span className="flex items-center gap-2 min-w-0"><span className="font-bold text-sm max-sm:text-xs">{opt.code}</span><span className="text-gray-500 text-sm max-sm:text-xs truncate">{opt.name}</span></span>
+          <span className="text-sm max-sm:text-xs text-gray-500 shrink-0">{opt.dial}</span>
+        </>
+      )}
+    />
+  );
+}
 
 type ClaimState =
   | "loading"
@@ -88,13 +97,11 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
   const [escrowData, setEscrowData] = useState<EscrowData | null>(null);
   const [generatedKeypair, setGeneratedKeypair] = useState<Keypair | null>(null);
   const [keyDownloaded, setKeyDownloaded] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<DialOption>(getDialOption("IN"));
   const [phoneInput, setPhoneInput] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [message, setMessage] = useState("");
   const [txSig, setTxSig] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const claimantWallet = claimMode === "generated" ? generatedKeypair?.publicKey ?? null : publicKey;
 
@@ -107,16 +114,6 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
       setState("otp_prompt");
     }
   }, [publicKey, state, claimMode]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   async function loadEscrow() {
     try {
@@ -259,11 +256,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
   return (
     <div className="min-h-screen bg-[#F6F4EE] flex flex-col font-[outfit]">
       {/* Top Bar */}
-      <div className="bg-[#0B2818] flex items-center justify-between h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/"><div className="flex items-center"><Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" /><p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p></div></Link>
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-        <WalletDropdown />
-      </div>
+      <AppHeader />
       <AppNav />
 
       <div className="flex-1 max-w-lg mx-auto w-full p-6 max-sm:p-3">
@@ -330,23 +323,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
                   <>
                     <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">Phone Number</label>
                     <div className="flex gap-2 mb-4 max-sm:mb-3">
-                      <div className="relative" ref={dropdownRef}>
-                        <button type="button" onClick={() => setDropdownOpen(!dropdownOpen)} className={`border rounded-xl max-sm:rounded-lg px-3 max-sm:px-2 py-3 max-sm:py-2.5 flex items-center bg-white min-w-[80px] max-sm:min-w-[70px] justify-between gap-1 transition-colors font-[outfit] ${dropdownOpen ? "border-[#B8FF4F] ring-2 ring-[#B8FF4F]" : "border-gray-300"}`}>
-                          <span className="text-sm max-sm:text-xs font-bold text-[#0B2818]">{selectedCountry.code}</span>
-                          <span className="text-sm max-sm:text-xs text-gray-600">{selectedCountry.dial}</span>
-                          <ChevronDown className={`w-4 h-4 max-sm:w-3 max-sm:h-3 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
-                        </button>
-                        {dropdownOpen && (
-                          <div className="absolute top-full left-0 mt-1 w-[220px] max-sm:w-[200px] bg-white border border-gray-200 rounded-xl max-sm:rounded-lg shadow-xl z-50 max-h-[240px] overflow-y-auto font-[outfit]">
-                            {COUNTRY_CODES.map((country) => (
-                              <button key={country.code + country.dial} type="button" onClick={() => { setSelectedCountry(country); setDropdownOpen(false); }} className={`w-full text-left px-4 max-sm:px-3 py-2.5 max-sm:py-2 flex items-center justify-between transition-colors ${selectedCountry.code === country.code && selectedCountry.dial === country.dial ? "bg-[#B8FF4F]/20 text-[#0B2818]" : "text-[#0B2818] hover:bg-[#B8FF4F]/10"}`}>
-                                <span className="flex items-center gap-2"><span className="font-bold text-sm max-sm:text-xs">{country.code}</span><span className="text-gray-500 text-sm max-sm:text-xs truncate">{country.name}</span></span>
-                                <span className="text-sm max-sm:text-xs text-gray-500 shrink-0">{country.dial}</span>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
+                      <ClaimCountrySelect value={selectedCountry.code} onChange={setSelectedCountry} />
                       <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
                     </div>
                   </>
@@ -420,10 +397,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
       </div>
 
       {/* Footer */}
-      <div className="bg-[#0B2818] mt-auto p-10 flex flex-col items-center justify-center">
-        <div className="text-white font-[fraunces] text-2xl font-bold italic mb-2">Zing<span className="text-[#B8FF4F]">Pay</span></div>
-        <p className="text-gray-400 text-xs text-center">No download, No Signups, Just open the web app and go!</p>
-      </div>
+      <AppFooter className="mt-auto" />
     </div>
   );
 }
@@ -472,11 +446,7 @@ function ClaimListView() {
 
   return (
     <div className="min-h-screen bg-[#F6F4EE] flex flex-col font-[outfit]">
-      <div className="bg-[#0B2818] flex items-center justify-between h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/"><div className="flex items-center"><Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" /><p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p></div></Link>
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-        <WalletDropdown />
-      </div>
+      <AppHeader />
 
       {selectedTx ? (
         <ClaimDetailView tx={selectedTx} onClaim={handleClaimSubmit} showModal={showModal} onCloseModal={handleCloseModal} onCloseDetail={() => setSelectedTx(null)} />
@@ -520,10 +490,7 @@ function ClaimListView() {
         </>
       )}
 
-      <div className="bg-[#0B2818] mt-auto p-10 flex flex-col items-center justify-center">
-        <div className="text-white font-[fraunces] text-2xl font-bold italic mb-2">Zing<span className="text-[#B8FF4F]">Pay</span></div>
-        <p className="text-gray-400 text-xs text-center">No download, No Signups, Just open the web app and go!</p>
-      </div>
+      <AppFooter className="mt-auto" />
     </div>
   );
 }
@@ -559,21 +526,11 @@ function ClaimDetailView({ tx, onClaim, showModal, onCloseModal, onCloseDetail }
   const { connection } = useConnection();
   const { publicKey, signTransaction } = useWallet();
 
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0]);
-  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [selectedCountry, setSelectedCountry] = useState<DialOption>(getDialOption("IN"));
   const [phoneInput, setPhoneInput] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [claimState, setClaimState] = useState<"idle" | "sending_otp" | "otp_sent" | "verifying" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
-  const dropdownRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) setDropdownOpen(false);
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   return (
     <div className="flex-1 w-full max-w-lg mx-auto p-6 max-sm:p-3 relative">
@@ -595,23 +552,7 @@ function ClaimDetailView({ tx, onClaim, showModal, onCloseModal, onCloseDetail }
         <div className="border border-gray-300 rounded-[1.5rem] max-sm:rounded-[1rem] p-5 max-sm:p-4 text-left bg-white">
           <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">Phone Number</label>
           <div className="flex gap-2 mb-4 max-sm:mb-3">
-            <div className="relative" ref={dropdownRef}>
-              <button type="button" onClick={() => setDropdownOpen(!dropdownOpen)} className={`border rounded-xl max-sm:rounded-lg px-3 max-sm:px-2 py-3 max-sm:py-2.5 flex items-center bg-white min-w-[80px] max-sm:min-w-[70px] justify-between gap-1 transition-colors font-[outfit] ${dropdownOpen ? "border-[#B8FF4F] ring-2 ring-[#B8FF4F]" : "border-gray-300"}`}>
-                <span className="text-sm max-sm:text-xs font-bold text-[#0B2818]">{selectedCountry.code}</span>
-                <span className="text-sm max-sm:text-xs text-gray-600">{selectedCountry.dial}</span>
-                <ChevronDown className={`w-4 h-4 max-sm:w-3 max-sm:h-3 text-gray-400 transition-transform ${dropdownOpen ? "rotate-180" : ""}`} />
-              </button>
-              {dropdownOpen && (
-                <div className="absolute top-full left-0 mt-1 w-[220px] max-sm:w-[200px] bg-white border border-gray-200 rounded-xl max-sm:rounded-lg shadow-xl z-50 max-h-[240px] overflow-y-auto font-[outfit]">
-                  {COUNTRY_CODES.map((country) => (
-                    <button key={country.code + country.dial} type="button" onClick={() => { setSelectedCountry(country); setDropdownOpen(false); }} className={`w-full text-left px-4 max-sm:px-3 py-2.5 max-sm:py-2 flex items-center justify-between transition-colors ${selectedCountry.code === country.code ? "bg-[#B8FF4F]/20" : "hover:bg-[#B8FF4F]/10"}`}>
-                      <span className="flex items-center gap-2"><span className="font-bold text-sm max-sm:text-xs">{country.code}</span><span className="text-gray-500 text-sm max-sm:text-xs truncate">{country.name}</span></span>
-                      <span className="text-sm max-sm:text-xs text-gray-500 shrink-0">{country.dial}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            <ClaimCountrySelect value={selectedCountry.code} onChange={setSelectedCountry} />
             <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
           </div>
 

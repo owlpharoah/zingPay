@@ -1,31 +1,33 @@
 "use client"
 import { useEffect, useState } from "react"
-import Image from "next/image"
-import Link from "next/link"
 import AppNav from "@/components/AppNav"
+import AppHeader from "@/components/AppHeader"
+import AppFooter from "@/components/AppFooter"
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js"
 import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
 import { hashPhone, toHex } from "@/lib/hash"
 import { getRegistryPda, getEscrowPda } from "@/lib/program"
 import { PROGRAM_ID, BACKEND_URL } from "@/lib/constants"
+import { getDialOption } from "@/lib/phone"
+import { CountryCodeSelect } from "@/components/CountryCodeSelect"
+import { CurrencySelect } from "@/components/CurrencySelect"
 import * as anchor from "@coral-xyz/anchor"
-import { WalletDropdown } from "@/components/WalletDropdown"
 
 const ESCROW_EXPIRY_SECONDS = 72 * 3600
 
-// Country dropdown maps dial code to CountryCode for libphonenumber-js
-const countries = [
-  { code: "+91", label: "IN +91", country: "IN" as CountryCode },
-  { code: "+1", label: "US +1", country: "US" as CountryCode },
-  { code: "+44", label: "UK +44", country: "GB" as CountryCode },
-  { code: "+61", label: "AU +61", country: "AU" as CountryCode },
-  { code: "+971", label: "AE +971", country: "AE" as CountryCode },
-  { code: "+65", label: "SG +65", country: "SG" as CountryCode },
-  { code: "+81", label: "JP +81", country: "JP" as CountryCode },
-]
+// Stablecoins we always offer on top of the live fiat list. CoinGecko doesn't
+// expose these as `vs_currencies`, so we price SOL against their own USD price.
+const STABLECOINS: Record<string, string> = {
+  USDC: "usd-coin",
+  USDG: "global-dollar",
+}
 
-const currencies = ["SOL", "USD", "INR", "EUR", "GBP", "JPY", "AED", "SGD"]
+// Currencies always pinned to the top of the dropdown, in this order.
+const PINNED_CURRENCIES = ["SOL", "USDC", "USDG"]
+
+// Shown until the live CoinGecko currency list loads (or if it fails).
+const FALLBACK_CURRENCIES = [...PINNED_CURRENCIES, "USD", "INR", "EUR", "GBP", "JPY", "AED", "SGD"]
 
 type PendingEscrow = {
   escrow: string
@@ -43,8 +45,9 @@ export default function Send() {
   // Form State
   const [phone, setPhone] = useState("")
   const [amount, setAmount] = useState("")
-  const [countryCode, setCountryCode] = useState("+91")
+  const [country, setCountry] = useState<CountryCode>("IN")
   const [currency, setCurrency] = useState("SOL")
+  const [currencies, setCurrencies] = useState<string[]>(FALLBACK_CURRENCIES)
 
   // UI State
   const [isCountryOpen, setIsCountryOpen] = useState(false)
@@ -66,7 +69,31 @@ export default function Send() {
   const enteredAmount = Number(amount || 0)
   const solAmount = currency === "SOL" ? enteredAmount : solRate > 0 ? enteredAmount / solRate : 0
 
-  // Fetch SOL rate when currency changes
+  // Build the dropdown dynamically from CoinGecko's live list of supported
+  // currencies, so we never hardcode what's convertible. Stablecoins (USDC,
+  // USDG) are pinned on top; everything else is the live fiat/crypto list.
+  useEffect(() => {
+    let cancelled = false
+    async function loadCurrencies() {
+      try {
+        const resp = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies")
+        const data = await resp.json()
+        if (!Array.isArray(data)) throw new Error("Bad list")
+        const pinned = PINNED_CURRENCIES.map((c) => c.toUpperCase())
+        const rest = data
+          .map((c: string) => c.toUpperCase())
+          .filter((c: string) => !pinned.includes(c))
+          .sort()
+        if (!cancelled) setCurrencies([...PINNED_CURRENCIES, ...rest])
+      } catch {
+        // Keep the fallback list on failure.
+      }
+    }
+    loadCurrencies()
+    return () => { cancelled = true }
+  }, [])
+
+  // Fetch the live SOL rate whenever the selected currency changes.
   useEffect(() => {
     let cancelled = false
     async function loadRate() {
@@ -79,11 +106,28 @@ export default function Send() {
       setRateLoading(true)
       setRateError("")
       try {
-        const resp = await fetch(
-          `https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=${currency.toLowerCase()}`
-        )
-        const data = await resp.json()
-        const nextRate = Number(data?.solana?.[currency.toLowerCase()])
+        const stableId = STABLECOINS[currency]
+        let nextRate: number
+        if (stableId) {
+          // CoinGecko can't quote SOL directly in a stablecoin, so derive it:
+          // 1 SOL = (SOL in USD) / (stablecoin in USD).
+          const resp = await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?ids=solana,${stableId}&vs_currencies=usd`
+          )
+          const data = await resp.json()
+          const solUsd = Number(data?.solana?.usd)
+          const stableUsd = Number(data?.[stableId]?.usd)
+          if (!solUsd || !stableUsd || Number.isNaN(solUsd) || Number.isNaN(stableUsd)) {
+            throw new Error("Rate unavailable")
+          }
+          nextRate = solUsd / stableUsd
+        } else {
+          const resp = await fetch(
+            `https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=${currency.toLowerCase()}`
+          )
+          const data = await resp.json()
+          nextRate = Number(data?.solana?.[currency.toLowerCase()])
+        }
         if (!nextRate || Number.isNaN(nextRate)) throw new Error("Rate unavailable")
         if (!cancelled) {
           setSolRate(nextRate)
@@ -98,10 +142,6 @@ export default function Send() {
     loadRate()
     return () => { cancelled = true }
   }, [currency])
-
-  function getCountryForDial(dial: string): CountryCode {
-    return countries.find(c => c.code === dial)?.country || "IN"
-  }
 
   function appendHistoryRecord(record: {
     txSig: string
@@ -205,8 +245,8 @@ export default function Send() {
     // Validate phone
     let phoneE164: string
     try {
-      const country = getCountryForDial(countryCode)
-      const fullPhone = `${countryCode}${phone.replace(/\D/g, "")}`
+      const dial = getDialOption(country).dial
+      const fullPhone = `${dial}${phone.replace(/\D/g, "")}`
       const parsed = fullPhone.startsWith("+")
         ? parsePhoneNumberFromString(fullPhone)
         : parsePhoneNumberFromString(phone.trim(), country)
@@ -362,27 +402,16 @@ export default function Send() {
   }
 
   return (
-    <div className="bg-[#F6F5F0] min-h-screen relative font-[outfit]">
+    <div className="bg-white min-h-screen relative font-[outfit]">
 
       {/*header*/}
-      <div className="bg-[#0B2818] flex items-center justify-around h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/">
-          <div className="flex items-center">
-            <Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" />
-            <p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p>
-          </div>
-        </Link>
-
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-
-        <WalletDropdown />
-      </div>
+      <AppHeader />
 
       <AppNav />
 
       {/* --- MAIN MIDDLE SECTION --- */}
       <main className="max-w-3xl mx-auto px-6 max-sm:px-4 py-12 max-sm:py-6 z-10 relative">
-        <h1 className="text-5xl max-sm:text-3xl text-[#0B2818] font-jersey font-normal mb-2 tracking-tight">
+        <h1 className="text-5xl max-sm:text-3xl text-[#0B2818] font-jersey text-normal mb-2 tracking-tight">
           Send Money Instantly.
         </h1>
         <p className="text-[#6B7280] text-sm md:text-base max-sm:text-xs mb-8 max-sm:mb-6 font-medium">
@@ -390,7 +419,7 @@ export default function Send() {
         </p>
 
         {/* Form Card */}
-        <div className="bg-[#F6F5F0] rounded-[2rem] max-sm:rounded-2xl border-2 border-[#0B2818] p-8 max-sm:p-5 shadow-sm relative z-20">
+        <div className="bg-white rounded-[2rem] max-sm:rounded-2xl border-2 border-[#0B2818] p-8 max-sm:p-5 shadow-sm relative z-20">
           <form onSubmit={handleSend}>
 
             {/* Invisible overlay moved inside the form to respect stacking context */}
@@ -412,42 +441,37 @@ export default function Send() {
               <div className="flex bg-white border-2 border-[#0B2818] rounded-2xl max-sm:rounded-xl overflow-visible h-[60px] max-sm:h-[50px]">
 
                 {/* Custom Country Dropdown */}
-                <div className="relative flex items-center border-r-2 border-[#0B2818] bg-white rounded-l-2xl max-sm:rounded-l-xl">
-                  <div
-                    onClick={() => {
-                      setIsCountryOpen(!isCountryOpen)
-                      setIsCurrencyOpen(false)
-                    }}
-                    className="flex items-center justify-between w-[110px] max-sm:w-[90px] h-full px-4 max-sm:px-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="font-bold text-[#0B2818] text-base max-sm:text-sm font-[outfit]">
-                      {countries.find(c => c.code === countryCode)?.label}
-                    </span>
-                    <svg className={`w-2.5 h-2.5 text-[#0B2818] transition-transform duration-200 ${isCountryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-
-                  {/* Dropdown Menu */}
-                  {isCountryOpen && (
-                    <div className="absolute top-[calc(100%+8px)] left-0 w-[140px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                      {countries.map((c) => (
-                        <div
-                          key={c.code}
-                          onClick={() => {
-                            setCountryCode(c.code)
-                            setIsCountryOpen(false)
-                          }}
-                          className={`px-4 py-3 max-sm:py-2.5 text-sm max-sm:text-xs font-bold font-[outfit] cursor-pointer transition-colors border-b last:border-b-0 border-[#0B2818]/10
-                            ${countryCode === c.code ? 'bg-[#B8FF4F] text-[#0B2818]' : 'text-[#0B2818] hover:bg-[#B8FF4F]/50'}
-                          `}
-                        >
-                          {c.label}
-                        </div>
-                      ))}
-                    </div>
+                <CountryCodeSelect
+                  value={country}
+                  onChange={(opt) => setCountry(opt.code)}
+                  open={isCountryOpen}
+                  onOpenChange={(open) => {
+                    setIsCountryOpen(open)
+                    if (open) setIsCurrencyOpen(false)
+                  }}
+                  className="relative flex items-center border-r-2 border-[#0B2818] bg-white rounded-l-2xl max-sm:rounded-l-xl"
+                  triggerClassName="flex items-center justify-between w-[110px] max-sm:w-[90px] h-full px-4 max-sm:px-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                  menuClassName="absolute top-[calc(100%+8px)] left-0 w-[190px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-50"
+                  optionClassName={(active) =>
+                    `w-full px-4 py-3 max-sm:py-2.5 text-sm max-sm:text-xs font-bold font-[outfit] cursor-pointer transition-colors border-b last:border-b-0 border-[#0B2818]/10 flex items-center justify-between gap-2 ${active ? "bg-[#B8FF4F] text-[#0B2818]" : "text-[#0B2818] hover:bg-[#B8FF4F]/50"}`
+                  }
+                  renderTrigger={(opt, open) => (
+                    <>
+                      <span className="font-bold text-[#0B2818] text-base max-sm:text-sm font-[outfit]">
+                        {opt.code} {opt.dial}
+                      </span>
+                      <svg className={`w-2.5 h-2.5 text-[#0B2818] transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    </>
                   )}
-                </div>
+                  renderOption={(opt) => (
+                    <>
+                      <span className="truncate">{opt.code} <span className="text-gray-500 font-medium">{opt.name}</span></span>
+                      <span className="shrink-0 text-gray-500">{opt.dial}</span>
+                    </>
+                  )}
+                />
 
                 <input
                   type="tel"
@@ -466,43 +490,17 @@ export default function Send() {
               </label>
               <div className="flex items-center bg-white border-2 border-[#0B2818] rounded-2xl max-sm:rounded-xl overflow-visible h-[60px] max-sm:h-[50px] px-3 max-sm:px-2">
 
-                {/* Custom Currency Dropdown */}
-                <div className="relative flex items-center h-full py-2">
-                  <div
-                    onClick={() => {
-                      setIsCurrencyOpen(!isCurrencyOpen)
-                      setIsCountryOpen(false)
-                    }}
-                    className="flex items-center justify-between bg-[#0B2818] hover:bg-[#0B2818]/90 rounded-full w-[85px] max-sm:w-[75px] h-full px-4 max-sm:px-3 cursor-pointer transition-colors"
-                  >
-                    <span className="font-semibold text-white text-sm max-sm:text-xs font-[outfit]">
-                      {currency}
-                    </span>
-                    <svg className={`w-2 h-2 text-white transition-transform duration-200 ${isCurrencyOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-
-                  {/* Dropdown Menu */}
-                  {isCurrencyOpen && (
-                    <div className="absolute top-[calc(100%+4px)] left-0 w-[100px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150 z-50 max-h-[200px] overflow-y-auto">
-                      {currencies.map((curr) => (
-                        <div
-                          key={curr}
-                          onClick={() => {
-                            setCurrency(curr)
-                            setIsCurrencyOpen(false)
-                          }}
-                          className={`px-4 py-2.5 max-sm:py-2 text-sm max-sm:text-xs font-bold font-[outfit] cursor-pointer transition-colors border-b last:border-b-0 border-[#0B2818]/10
-                            ${currency === curr ? 'bg-[#B8FF4F] text-[#0B2818]' : 'text-[#0B2818] hover:bg-[#B8FF4F]/50'}
-                          `}
-                        >
-                          {curr}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                {/* Custom Currency Dropdown — searchable + keyboard nav */}
+                <CurrencySelect
+                  value={currency}
+                  onChange={setCurrency}
+                  options={currencies}
+                  open={isCurrencyOpen}
+                  onOpenChange={(open) => {
+                    setIsCurrencyOpen(open)
+                    if (open) setIsCountryOpen(false)
+                  }}
+                />
 
                 <input
                   type="number"
@@ -603,12 +601,7 @@ export default function Send() {
       {/* --- END MAIN MIDDLE SECTION --- */}
 
       {/* Footer */}
-      <div className="bg-[#0B2818] p-10 max-sm:p-6 flex flex-col items-center justify-center shrink-0">
-        <Image alt="zingpay" src="/zingpay.svg" width={130} height={37} className="block mx-auto max-sm:w-[100px] h-auto" />
-        <p className="text-white text-lg max-sm:text-sm font-normal mt-4 max-sm:mt-2 font-[outfit] font-semibold text-center max-w-sm">
-          No downloads, No signups, Just open the app and go!
-        </p>
-      </div>
+      <AppFooter />
 
       {/* --- SUCCESS MODAL OVERLAY --- */}
       {status === "success" && (
@@ -634,7 +627,7 @@ export default function Send() {
             <div className="w-full bg-white border-2 border-[#0B2818] rounded-2xl max-sm:rounded-xl mb-8 max-sm:mb-6 overflow-hidden font-[outfit]">
               <div className="flex items-center justify-between p-4 max-sm:p-3 border-b-2 border-[#0B2818]">
                 <span className="text-[#6B7280] font-medium text-sm max-sm:text-xs">To</span>
-                <span className="font-bold text-[#0B2818] text-base max-sm:text-sm">{countryCode}-{phone}</span>
+                <span className="font-bold text-[#0B2818] text-base max-sm:text-sm">{getDialOption(country).dial}-{phone}</span>
               </div>
               <div className="flex items-center justify-between p-4 max-sm:p-3 border-b-2 border-[#0B2818]">
                 <span className="text-[#6B7280] font-medium text-sm max-sm:text-xs">Amount</span>

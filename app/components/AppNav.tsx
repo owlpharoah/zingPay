@@ -2,19 +2,31 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-
-const navItems = [
-  { href: "/send", label: "Send" },
-  { href: "/register", label: "ID Register" },
-  { href: "/history", label: "History" },
-  { href: "/refund", label: "Refund" },
-];
+import { useRegistration, isLocalhost } from "@/lib/useRegistration";
 
 export default function AppNav() {
   const pathname = usePathname();
+  const { registered } = useRegistration();
+
+  // Once the connected wallet is registered, the "ID Register" entry becomes
+  // "Modify". Until then we show "ID Register" (the default while loading or
+  // when no wallet is connected). On localhost we always surface "Modify" too,
+  // so the route stays reachable during development.
+  const navItems: { href: string; label: string }[] = [
+    { href: "/send", label: "Send" },
+    registered
+      ? { href: "/modify", label: "Modify" }
+      : { href: "/register", label: "ID Register" },
+    { href: "/history", label: "History" },
+    { href: "/refund", label: "Refund" },
+  ];
+
+  if (!registered && isLocalhost()) {
+    navItems.push({ href: "/modify", label: "Modify (dev)" });
+  }
 
   return (
-    <nav className=" bg-[#f6f6f1] px-4 py-3 lg:px-8">
+    <nav className=" bg-white px-4 py-3 lg:px-8">
       <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-2">
         {navItems.map((item) => {
           const active =

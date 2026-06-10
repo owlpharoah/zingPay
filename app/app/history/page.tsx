@@ -2,12 +2,9 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import Link from "next/link";
-import "@fontsource/fraunces";
-import "@fontsource/outfit";
 import { useWallet } from "@solana/wallet-adapter-react";
 import AppNav from "@/components/AppNav";
-import { WalletDropdown } from "@/components/WalletDropdown";
+import AppHeader from "@/components/AppHeader";
 
 type SentRecord = {
   txSig: string;
@@ -40,25 +37,16 @@ export default function HistoryPage() {
   }, [historyKey, publicKey]);
 
   return (
-    <div className="bg-[#F6F5F0] min-h-screen flex flex-col font-[outfit]">
+    <div className="bg-white min-h-screen flex flex-col font-[outfit]">
       {/* Header */}
-      <div className="bg-[#0B2818] flex items-center justify-around h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/">
-          <div className="flex items-center">
-            <Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" />
-            <p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p>
-          </div>
-        </Link>
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-        <WalletDropdown />
-      </div>
+      <AppHeader />
 
       <AppNav />
 
       {/* Main Content */}
       <main className="flex-1 max-w-2xl mx-auto w-full px-6 max-sm:px-4 py-10 max-sm:py-6">
-        <h1 className="text-4xl max-sm:text-3xl text-[#0B2818] font-[fraunces] font-black mb-2 tracking-tight">
-          Transaction <span className="italic font-normal">History.</span>
+        <h1 className="text-4xl max-sm:text-3xl text-[#0B2818] font-jersey font-normal mb-2 tracking-tight">
+          Transaction History.
         </h1>
         <p className="text-[#6B7280] text-sm max-sm:text-xs mb-8 max-sm:mb-6 font-medium">
           Last 50 transactions sent from this wallet on this browser.
