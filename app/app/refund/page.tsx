@@ -1,44 +1,28 @@
 "use client";
 
 import { useState } from "react";
-import Image from "next/image";
-import Link from "next/link";
-import "@fontsource/fraunces";
-import "@fontsource/outfit";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
 import { CountryCode } from "libphonenumber-js";
 import * as anchor from "@coral-xyz/anchor";
 import { hashPhone } from "@/lib/hash";
 import { getEscrowPda } from "@/lib/program";
-import { normalizeToE164 } from "@/lib/phone";
+import { normalizeToE164, getDialOption } from "@/lib/phone";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import AppNav from "@/components/AppNav";
-import { WalletDropdown } from "@/components/WalletDropdown";
-
-const countries = [
-  { code: "+91", label: "IN +91", country: "IN" as CountryCode },
-  { code: "+1", label: "US +1", country: "US" as CountryCode },
-  { code: "+44", label: "UK +44", country: "GB" as CountryCode },
-  { code: "+61", label: "AU +61", country: "AU" as CountryCode },
-  { code: "+971", label: "AE +971", country: "AE" as CountryCode },
-  { code: "+65", label: "SG +65", country: "SG" as CountryCode },
-  { code: "+81", label: "JP +81", country: "JP" as CountryCode },
-];
+import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 
 export default function RefundPage() {
   const { connection } = useConnection();
   const { publicKey, sendTransaction } = useWallet();
 
-  const [countryCode, setCountryCode] = useState("+91");
+  const [country, setCountry] = useState<CountryCode>("IN");
   const [phone, setPhone] = useState("");
   const [isCountryOpen, setIsCountryOpen] = useState(false);
   const [status, setStatus] = useState<"idle" | "checking" | "submitting" | "success" | "error">("idle");
   const [message, setMessage] = useState("");
   const [txSig, setTxSig] = useState("");
-
-  function getCountryForDial(dial: string): CountryCode {
-    return countries.find(c => c.code === dial)?.country || "IN";
-  }
 
   function formatError(err: any): string {
     const logs: string[] | undefined = err?.logs || err?.error?.logs;
@@ -66,8 +50,8 @@ export default function RefundPage() {
     // Validate phone
     let phoneE164: string;
     try {
-      const country = getCountryForDial(countryCode);
-      const fullPhone = `${countryCode}${phone.replace(/\D/g, "")}`;
+      const dial = getDialOption(country).dial;
+      const fullPhone = `${dial}${phone.replace(/\D/g, "")}`;
       const e164 = normalizeToE164(fullPhone, country);
       if (!e164) throw new Error("Invalid");
       phoneE164 = e164;
@@ -154,18 +138,9 @@ export default function RefundPage() {
   }
 
   return (
-    <div className="bg-[#F6F5F0] min-h-screen flex flex-col font-[outfit]">
+    <div className="bg-white min-h-screen flex flex-col font-[outfit]">
       {/* Header */}
-      <div className="bg-[#0B2818] flex items-center justify-around h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/">
-          <div className="flex items-center">
-            <Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" />
-            <p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p>
-          </div>
-        </Link>
-        <Image alt="zingpay" src="/zingpay.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-        <WalletDropdown />
-      </div>
+      <AppHeader />
 
       <AppNav />
 
@@ -190,32 +165,34 @@ export default function RefundPage() {
               RECIPIENT PHONE NUMBER
             </label>
             <div className="flex bg-white border-2 border-[#0B2818] rounded-2xl max-sm:rounded-xl overflow-visible h-[60px] max-sm:h-[50px]">
-              <div className="relative flex items-center border-r-2 border-[#0B2818] bg-white rounded-l-2xl max-sm:rounded-l-xl">
-                <div
-                  onClick={() => setIsCountryOpen(!isCountryOpen)}
-                  className="flex items-center justify-between w-[110px] max-sm:w-[90px] h-full px-4 max-sm:px-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                >
-                  <span className="font-bold text-[#0B2818] text-base max-sm:text-sm font-[outfit]">
-                    {countries.find(c => c.code === countryCode)?.label}
-                  </span>
-                  <svg className={`w-2.5 h-2.5 text-[#0B2818] transition-transform duration-200 ${isCountryOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </div>
-                {isCountryOpen && (
-                  <div className="absolute top-[calc(100%+8px)] left-0 w-[140px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg overflow-hidden flex flex-col animate-in fade-in slide-in-from-top-2 duration-150 z-50">
-                    {countries.map((c) => (
-                      <div
-                        key={c.code}
-                        onClick={() => { setCountryCode(c.code); setIsCountryOpen(false); }}
-                        className={`px-4 py-3 max-sm:py-2.5 text-sm max-sm:text-xs font-bold font-[outfit] cursor-pointer transition-colors border-b last:border-b-0 border-[#0B2818]/10 ${countryCode === c.code ? 'bg-[#B8FF4F] text-[#0B2818]' : 'text-[#0B2818] hover:bg-[#B8FF4F]/50'}`}
-                      >
-                        {c.label}
-                      </div>
-                    ))}
-                  </div>
+              <CountryCodeSelect
+                value={country}
+                onChange={(opt) => setCountry(opt.code)}
+                open={isCountryOpen}
+                onOpenChange={setIsCountryOpen}
+                className="relative flex items-center border-r-2 border-[#0B2818] bg-white rounded-l-2xl max-sm:rounded-l-xl"
+                triggerClassName="flex items-center justify-between w-[110px] max-sm:w-[90px] h-full px-4 max-sm:px-3 cursor-pointer hover:bg-gray-50 transition-colors"
+                menuClassName="absolute top-[calc(100%+8px)] left-0 w-[190px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg flex flex-col overflow-hidden animate-in fade-in slide-in-from-top-2 duration-150 z-50"
+                optionClassName={(active) =>
+                  `w-full px-4 py-3 max-sm:py-2.5 text-sm max-sm:text-xs font-bold font-[outfit] cursor-pointer transition-colors border-b last:border-b-0 border-[#0B2818]/10 flex items-center justify-between gap-2 ${active ? "bg-[#B8FF4F] text-[#0B2818]" : "text-[#0B2818] hover:bg-[#B8FF4F]/50"}`
+                }
+                renderTrigger={(opt, open) => (
+                  <>
+                    <span className="font-bold text-[#0B2818] text-base max-sm:text-sm font-[outfit]">
+                      {opt.code} {opt.dial}
+                    </span>
+                    <svg className={`w-2.5 h-2.5 text-[#0B2818] transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 10 6" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  </>
                 )}
-              </div>
+                renderOption={(opt) => (
+                  <>
+                    <span className="truncate">{opt.code} <span className="text-gray-500 font-medium">{opt.name}</span></span>
+                    <span className="shrink-0 text-gray-500">{opt.dial}</span>
+                  </>
+                )}
+              />
               <input
                 type="tel"
                 value={phone}
@@ -278,12 +255,7 @@ export default function RefundPage() {
       </main>
 
       {/* Footer */}
-      <div className="bg-[#0B2818] p-10 max-sm:p-6 flex flex-col items-center justify-center shrink-0 mt-auto">
-        <Image alt="zingpay" src="/zingpay.svg" width={130} height={37} className="block mx-auto max-sm:w-[100px] h-auto" />
-        <p className="text-white text-lg max-sm:text-sm font-normal mt-4 max-sm:mt-2 font-[outfit] font-semibold text-center max-w-sm">
-          No downloads, No signups, Just open the app and go!
-        </p>
-      </div>
+      <AppFooter className="mt-auto" />
     </div>
   );
 }

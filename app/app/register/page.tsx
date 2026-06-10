@@ -1,16 +1,16 @@
 "use client"
 
 import Image from "next/image";
-import Link from "next/link";
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import AppNav from "@/components/AppNav";
+import AppHeader from "@/components/AppHeader";
+import AppFooter from "@/components/AppFooter";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Transaction } from "@solana/web3.js";
-import { CountryCode } from "libphonenumber-js";
 import { BACKEND_URL } from "@/lib/constants";
-import { normalizeToE164 } from "@/lib/phone";
-import { WalletDropdown } from "@/components/WalletDropdown";
+import { normalizeToE164, getDialOption, DialOption } from "@/lib/phone";
+import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 
 // --- Types ---
 type Step = 0 | 1 | 2;
@@ -23,27 +23,6 @@ type RegisterState =
   | "submitting"
   | "success"
   | "error";
-
-// --- Country Codes Data ---
-const COUNTRY_CODES = [
-  { code: "AE" as CountryCode, dial: "+971" },
-  { code: "AU" as CountryCode, dial: "+61" },
-  { code: "BR" as CountryCode, dial: "+55" },
-  { code: "CA" as CountryCode, dial: "+1" },
-  { code: "CN" as CountryCode, dial: "+86" },
-  { code: "DE" as CountryCode, dial: "+49" },
-  { code: "ES" as CountryCode, dial: "+34" },
-  { code: "FR" as CountryCode, dial: "+33" },
-  { code: "GB" as CountryCode, dial: "+44" },
-  { code: "IN" as CountryCode, dial: "+91" },
-  { code: "JP" as CountryCode, dial: "+81" },
-  { code: "KR" as CountryCode, dial: "+82" },
-  { code: "MX" as CountryCode, dial: "+52" },
-  { code: "NG" as CountryCode, dial: "+234" },
-  { code: "RU" as CountryCode, dial: "+7" },
-  { code: "US" as CountryCode, dial: "+1" },
-  { code: "ZA" as CountryCode, dial: "+27" },
-];
 
 // --- Animation Variants ---
 const slideVariants = {
@@ -138,7 +117,7 @@ export default function Register() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   // Form state
-  const [selectedCountry, setSelectedCountry] = useState({ code: "IN" as CountryCode, dial: "+91" });
+  const [selectedCountry, setSelectedCountry] = useState<DialOption>(getDialOption("IN"));
   const [phoneInput, setPhoneInput] = useState("");
   const [otpCode, setOtpCode] = useState("");
 
@@ -267,21 +246,12 @@ export default function Register() {
   return (
     <div className="relative min-h-screen flex flex-col">
       {/* header */}
-      <div className="bg-[#0B2818] flex items-center justify-around h-[131px] max-sm:h-[80px] p-4 max-sm:px-2 shrink-0">
-        <Link href="/">
-          <div className="flex items-center">
-            <Image alt="back" src="/back.svg" width={12} height={23} className="inline-block mr-4 max-sm:mr-2 max-sm:w-2 max-sm:h-[14px]" />
-            <p className="text-white font-[outfit] font-semibold text-xl max-sm:text-sm">Back</p>
-          </div>
-        </Link>
-        <Image alt="zingpay" src="/zinPay_logo.svg" width={172} height={57} className="w-[172px] h-auto max-sm:w-[110px]" />
-        <WalletDropdown />
-      </div>
+      <AppHeader />
 
       <AppNav/>
 
       {/* main content */}
-      <div className="flex-grow flex flex-col bg-white">
+      <div className="grow flex flex-col bg-white">
         <div className="flex flex-col items-center w-full max-w-4xl mx-auto p-10 max-sm:p-4 font-[outfit] flex-grow">
           <div className="bg-white border-2 border-[#0B2818] rounded-[40px] max-sm:rounded-[28px] w-full max-w-[900px] min-h-[600px] max-sm:min-h-[420px] p-8 max-sm:p-5 relative shadow-sm flex flex-col z-0">
 
@@ -387,12 +357,7 @@ export default function Register() {
         </div>
       </div>
 
-      <div className="bg-[#0B2818] p-10 max-sm:p-6 flex flex-col items-center justify-center shrink-0">
-        <Image alt="zingpay" src="/zingpay.svg" width={130} height={37} className="block mx-auto max-sm:w-[100px] h-auto" />
-        <p className="text-white text-lg max-sm:text-sm font-normal mt-4 max-sm:mt-2 font-[outfit] font-semibold text-center max-w-sm">
-          No downloads, No signups, Just open the app and go!
-        </p>
-      </div>
+      <AppFooter />
 
       <WalletCreatedModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} txSig={txSig} />
     </div>
@@ -427,8 +392,8 @@ function PhoneView({
 }: {
   isDropdownOpen: boolean;
   setIsDropdownOpen: (val: boolean) => void;
-  selectedCountry: { code: CountryCode; dial: string };
-  setSelectedCountry: (val: { code: CountryCode; dial: string }) => void;
+  selectedCountry: DialOption;
+  setSelectedCountry: (val: DialOption) => void;
   phoneInput: string;
   setPhoneInput: (val: string) => void;
 }) {
@@ -447,30 +412,32 @@ function PhoneView({
       <div className="w-full max-w-xl">
         <label className="text-sm max-sm:text-xs font-bold text-gray-700 mb-2 max-sm:mb-1.5 block tracking-wider">PHONE NUMBER</label>
         <div className="flex border-2 border-[#0B2818] rounded-2xl h-16 max-sm:h-14 relative bg-white z-20">
-          <button
-            type="button"
-            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-            className="relative flex items-center justify-center px-6 max-sm:px-4 border-r-2 border-[#0B2818] bg-white font-[outfit] font-semibold text-lg max-sm:text-base text-[#0B2818] hover:bg-gray-50 cursor-pointer rounded-l-2xl shrink-0"
-          >
-            {selectedCountry.code} <span className="ml-2 max-sm:ml-1">{selectedCountry.dial}</span>
-            <svg className={`w-4 h-4 max-sm:w-3 max-sm:h-3 ml-2 max-sm:ml-1 transition-transform duration-200 ${isDropdownOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-            </svg>
-          </button>
-          {isDropdownOpen && (
-            <div className="absolute z-[100] top-[68px] max-sm:top-[60px] left-[-2px] w-[180px] max-sm:w-[150px] max-h-[220px] max-sm:max-h-[180px] overflow-y-auto bg-white border-2 border-[#0B2818] rounded-xl shadow-[0px_4px_0px_0px_#0B2818] flex flex-col">
-              {COUNTRY_CODES.map((country) => (
-                <div
-                  key={country.code + country.dial}
-                  className="px-5 max-sm:px-4 py-3 max-sm:py-2.5 cursor-pointer hover:bg-[#B8FF4F] hover:text-[#0B2818] text-[#0B2818] transition-colors border-b border-gray-100 last:border-b-0 font-[outfit] font-semibold text-lg max-sm:text-base flex items-center justify-between"
-                  onClick={() => { setSelectedCountry(country); setIsDropdownOpen(false); }}
-                >
-                  <span>{country.code}</span>
-                  <span className="text-gray-500 text-base max-sm:text-sm">{country.dial}</span>
-                </div>
-              ))}
-            </div>
-          )}
+          <CountryCodeSelect
+            value={selectedCountry.code}
+            onChange={setSelectedCountry}
+            open={isDropdownOpen}
+            onOpenChange={setIsDropdownOpen}
+            className="relative shrink-0 flex"
+            triggerClassName="flex items-center justify-center h-full px-6 max-sm:px-4 border-r-2 border-[#0B2818] bg-white font-[outfit] font-semibold text-lg max-sm:text-base text-[#0B2818] hover:bg-gray-50 cursor-pointer rounded-l-2xl"
+            menuClassName="absolute z-[100] top-full mt-2 left-[-2px] w-[220px] max-sm:w-[190px] bg-white border-2 border-[#0B2818] rounded-xl shadow-[0px_4px_0px_0px_#0B2818] flex flex-col overflow-hidden"
+            optionClassName={(active) =>
+              `w-full px-5 max-sm:px-4 py-3 max-sm:py-2.5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 font-[outfit] font-semibold text-lg max-sm:text-base flex items-center justify-between gap-2 ${active ? "bg-[#B8FF4F] text-[#0B2818]" : "text-[#0B2818] hover:bg-[#B8FF4F]"}`
+            }
+            renderTrigger={(opt, open) => (
+              <>
+                {opt.code} <span className="ml-2 max-sm:ml-1">{opt.dial}</span>
+                <svg className={`w-4 h-4 max-sm:w-3 max-sm:h-3 ml-2 max-sm:ml-1 transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                </svg>
+              </>
+            )}
+            renderOption={(opt) => (
+              <>
+                <span className="truncate">{opt.code} <span className="text-gray-500 text-base max-sm:text-sm font-normal">{opt.name}</span></span>
+                <span className="text-gray-500 text-base max-sm:text-sm shrink-0">{opt.dial}</span>
+              </>
+            )}
+          />
           <input
             type="tel"
             placeholder="Enter phone number"
