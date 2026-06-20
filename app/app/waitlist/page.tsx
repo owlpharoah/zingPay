@@ -168,7 +168,7 @@ export default function WaitlistPage() {
                 <span className="-ml-3 h-[34px] w-[34px] rounded-full border-2 border-[#F7F4EE] bg-[#6b8275]" />
               </div>
               <p className="text-[15px] text-[#3c5a48]">
-                <strong className="text-[#0B2818]">2,400+</strong> people already in line
+                <strong className="text-[#0B2818]">90+</strong> people already in line
               </p>
             </div>
           </div>
