@@ -37,8 +37,8 @@ export default function LandingPage() {
             <li><a href="https://zingpay-docs.vercel.app" target="_blank" rel="noreferrer" className="text-[#F7F4EE] hover:text-[#B8FF4F]">Documentation</a></li>
           </ul>
 
-          <Link href="/register" className="hidden lg:block w-full rounded-3xl bg-[#192FFD] px-5 py-2 text-center sm:w-auto">
-            <p className="text-lg font-semibold text-white">OpenApp</p>
+          <Link href="/waitlist" className="hidden lg:block w-full rounded-3xl bg-[#192FFD] px-5 py-2 text-center sm:w-auto">
+            <p className="text-lg font-semibold text-white">Join waitlist</p>
           </Link>
 
           <div className="relative inline-block lg:hidden" ref={menuRef}>
@@ -93,8 +93,8 @@ export default function LandingPage() {
 
             <FadeIn delay={0.4}>
               <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center">
-                <Link href="/send" className="flex h-12 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#192FFD] px-6 shadow-[0px_4px_0px_0px_#0B2818]">
-                  <p className="text-lg font-semibold text-white">Try it now</p>
+                <Link href="/waitlist" className="flex h-12 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#192FFD] px-6 shadow-[0px_4px_0px_0px_#0B2818]">
+                  <p className="text-lg font-semibold text-white">Join waitlist</p>
                 </Link>
                 <Link href="#how-it-works" className="flex h-12 items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-white px-6 shadow-[0px_4px_0px_0px_#0B2818]">
                   <p className="text-lg font-semibold text-[#0B2818]">See how it works</p>
@@ -197,9 +197,6 @@ export default function LandingPage() {
         </div>
 
         <div className="relative mt-5 lg:-mt-2 z-0">
-          <Link href="/flow" className="mx-auto flex w-fit items-center justify-center rounded-3xl border-2 border-[#0B2818] bg-[#192FFD] px-6 py-3 text-xl font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818]">
-            <p>View Full Flow</p>
-          </Link>
           <Image alt="hand" src="/hand.svg" width={500} height={900} className="relative mx-auto mt-6 h-auto w-full max-w-md z-0 max-sm:w-60 max-sm:mt-0" />
         </div>
       </section>
@@ -249,8 +246,8 @@ export default function LandingPage() {
 
         <div className="relative left-1/2 right-1/2 top-26 sm:top-60 md:top-50">
           <Image alt="star" src="/favicon.svg" width={109} height={109} className="relative right-20 sm:right-30 top-8 block rotate-12 w-15.25 h-15.25 sm:w-25 sm:h-25" />
-          <Link href="/flow" className="relative -top-8 text-sm sm:-top-15 sm:left-3 w-fit rotate-6 items-center justify-center rounded-3xl  bg-[#192FFD] px-5 py-3 sm:text-xl font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818] flex">
-            <p>Try it now</p>
+          <Link href="/waitlist" className="relative -top-8 text-sm sm:-top-15 sm:left-3 w-fit rotate-6 items-center justify-center rounded-3xl  bg-[#192FFD] px-5 py-3 sm:text-xl font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818] flex">
+            <p>Join waitlist</p>
           </Link>
         </div>
       </section>
@@ -265,8 +262,8 @@ export default function LandingPage() {
           <Image alt="Security without compromise" src="/security.svg" width={1000} height={550} className="mx-auto h-auto w-fullinline-block hidden sm:block" />
           <Image alt="Security without compromise" src="/secure_mobile.svg" width={370} height={240} className="mx-auto h-auto w-fullinline-block block sm:hidden" />
           <div className="flex -mb-8 relative -top-18 left-4 sm:left-45 sm:-top-44">
-            <Link href="/flow" className="font-outfit flex w-fit items-center justify-center rounded-3xl border-white bg-[#192FFD] px-3 py-1 text-xs sm:text-xl sm:px-10 sm:py-4 font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818]">
-              <p>Try it now</p>
+            <Link href="/waitlist" className="font-outfit flex w-fit items-center justify-center rounded-3xl border-white bg-[#192FFD] px-3 py-1 text-xs sm:text-xl sm:px-10 sm:py-4 font-semibold text-white shadow-[0px_4px_0px_0px_#0B2818]">
+              <p>Join waitlist</p>
             </Link>
           </div>
         </FadeIn>
@@ -286,8 +283,8 @@ export default function LandingPage() {
         <p className="mt-4 text-xs font-[outfit] font-semibold text-white sm:text-lg">
           No downloads, No signups, Just open the app and go!
         </p>
-        <Link href="/send" className="mt-8 inline-flex rounded-3xl bg-[#192FFD] px-6 py-3 border-white border">
-          <p className="text-xl font-semibold text-white">Open The App</p>
+        <Link href="/waitlist" className="mt-8 inline-flex rounded-3xl bg-[#192FFD] px-6 py-3 border-white border">
+          <p className="text-xl font-semibold text-white">Join waitlist</p>
         </Link>
       </footer>
     </div>

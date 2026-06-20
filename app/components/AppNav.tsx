@@ -18,7 +18,6 @@ export default function AppNav() {
       ? { href: "/modify", label: "Modify" }
       : { href: "/register", label: "ID Register" },
     { href: "/history", label: "History" },
-    { href: "/refund", label: "Refund" },
   ];
 
   if (!registered && isLocalhost()) {
