@@ -6,10 +6,10 @@ resolution = true
 skip-lint = false
 
 [programs.devnet]
-solpay = "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm"
+solpay = "3mxRLcYoNynggNLDtpe9iZXMBoomYXQQPFHVAapzc3iZ"
 
 [programs.localnet]
-solpay = "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm"
+solpay = "3mxRLcYoNynggNLDtpe9iZXMBoomYXQQPFHVAapzc3iZ"
 
 [registry]
 url = "https://api.apr.dev"

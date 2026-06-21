@@ -3,15 +3,20 @@
 import { useState } from "react";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { PublicKey, SystemProgram, Transaction } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import { CountryCode } from "libphonenumber-js";
 import * as anchor from "@coral-xyz/anchor";
 import { hashPhone } from "@/lib/hash";
-import { getEscrowPda } from "@/lib/program";
+import { getEscrowPda, getEscrowTokenStatePda, getAta } from "@/lib/program";
+import { USDC_MINT } from "@/lib/constants";
 import { normalizeToE164, getDialOption } from "@/lib/phone";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import AppNav from "@/components/AppNav";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
+
+const ESCROW_NATIVE_SIZE = 89;
+const ESCROW_TOKEN_SIZE = 121;
 
 export default function RefundPage() {
   const { connection } = useConnection();
@@ -67,13 +72,26 @@ export default function RefundPage() {
 
     try {
       const phoneHash = await hashPhone(phoneE164);
-      const phoneHashArray = Array.from(phoneHash);
       const [escrowPda] = getEscrowPda(publicKey, phoneHash);
+      const [escrowTokenPda] = getEscrowTokenStatePda(publicKey, phoneHash, USDC_MINT);
 
-      const escrowInfo = await connection.getAccountInfo(escrowPda);
+      const [nativeInfo, tokenInfo] = await Promise.all([
+        connection.getAccountInfo(escrowPda),
+        connection.getAccountInfo(escrowTokenPda),
+      ]);
+
+      const escrowInfo = nativeInfo ?? tokenInfo;
+      const isToken = !nativeInfo && tokenInfo !== null;
+
       if (!escrowInfo) {
         setStatus("error");
         setMessage("No active escrow found for this phone number from your wallet (already claimed/refunded, or never created).");
+        return;
+      }
+
+      if (escrowInfo.data.length !== ESCROW_NATIVE_SIZE && escrowInfo.data.length !== ESCROW_TOKEN_SIZE) {
+        setStatus("error");
+        setMessage("Unrecognised escrow account format.");
         return;
       }
 
@@ -84,6 +102,7 @@ export default function RefundPage() {
         return;
       }
 
+      // created_at at offset 80 for both native (89 bytes) and token (121 bytes)
       const createdAt = Number(
         new DataView(escrowInfo.data.buffer, escrowInfo.data.byteOffset + 80, 8).getBigInt64(0, true)
       );
@@ -101,24 +120,42 @@ export default function RefundPage() {
 
       const idlResp = await fetch("/idl/solpay.json");
       const idl = await idlResp.json();
-
       const dummyWallet = {
         publicKey,
         signTransaction: async (tx: any) => tx,
         signAllTransactions: async (txs: any) => txs,
       };
-
       const provider = new anchor.AnchorProvider(connection, dummyWallet as any, { commitment: "confirmed" });
       const program = new anchor.Program(idl, provider);
 
-      const ix = await program.methods
-        .refundEscrow()
-        .accounts({
-          escrow: escrowPda,
-          sender: publicKey,
-          systemProgram: SystemProgram.programId,
-        })
-        .instruction();
+      let ix;
+      if (isToken) {
+        const escrowVaultAta = getAta(escrowTokenPda, USDC_MINT);
+        const senderAta = getAta(publicKey, USDC_MINT);
+        ix = await program.methods
+          .refundEscrowToken()
+          .accounts({
+            payer: publicKey,
+            sender: publicKey,
+            escrowTokenState: escrowTokenPda,
+            mint: USDC_MINT,
+            escrowToken: escrowVaultAta,
+            senderToken: senderAta,
+            tokenProgram: TOKEN_PROGRAM_ID,
+            associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+      } else {
+        ix = await program.methods
+          .refundEscrow()
+          .accounts({
+            escrow: escrowPda,
+            sender: publicKey,
+            systemProgram: SystemProgram.programId,
+          })
+          .instruction();
+      }
 
       const tx = new Transaction().add(ix);
       tx.feePayer = publicKey;
@@ -130,7 +167,7 @@ export default function RefundPage() {
 
       setTxSig(sig);
       setStatus("success");
-      setMessage("Refund completed. SOL returned to your wallet.");
+      setMessage(isToken ? "Refund completed. USDC returned to your wallet." : "Refund completed. SOL returned to your wallet.");
     } catch (err: any) {
       setMessage(formatError(err));
       setStatus("error");
@@ -199,6 +236,7 @@ export default function RefundPage() {
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="Enter phone number"
                 className="flex-1 px-4 max-sm:px-3 w-full text-base max-sm:text-sm font-medium font-[outfit] text-[#0B2818] focus:outline-none placeholder:text-gray-400 placeholder:font-normal bg-transparent rounded-r-2xl max-sm:rounded-r-xl"
+                onKeyDown={(e) => e.key === "Enter" && handleRefund()}
               />
             </div>
           </div>

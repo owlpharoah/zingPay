@@ -1,5 +1,5 @@
 {
-  "address": "DJBNMKMALGKKncXBPvy9NDeFactR5pgJ6bpU3qbMEddm",
+  "address": "3mxRLcYoNynggNLDtpe9iZXMBoomYXQQPFHVAapzc3iZ",
   "metadata": {
     "name": "solpay",
     "version": "0.1.0",
@@ -10,8 +10,7 @@
     {
       "name": "claim_escrow",
       "docs": [
-        "Claim escrowed SOL. Requires claim_authority co-sign (post-OTP).",
-        "Also auto-registers the phone for future direct transfers."
+        "Claim escrowed SOL. Requires claim_authority co-sign (post-OTP)."
       ],
       "discriminator": [
         200,
@@ -27,7 +26,7 @@
         {
           "name": "claim_authority",
           "signer": true,
-          "address": "Ga5Xonhi7vWhhgmRcBbdRCeeVM5PCu1FiEThf6BEGt1x"
+          "address": "5JWiQfGELyHtntzkiDgs57PGTHgAFQ3D5ia5S6RdJjpz"
         },
         {
           "name": "claimant",
@@ -65,6 +64,307 @@
               }
             ]
           }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "claim_escrow_token",
+      "docs": [
+        "Claim escrowed tokens. Requires claim_authority co-sign (post-OTP).",
+        "",
+        "Flow:",
+        "1. Server computes swap_amount_tokens off-chain via Pyth REST API (trusted via claim_authority).",
+        "2. Transfer net tokens (amount - swap_amount_tokens) escrow vault → claimant ATA.",
+        "3. Transfer swap_amount_tokens escrow vault → provider token account.",
+        "4. Transfer SOL (registry_rent + tx4_fee) provider_native → claimant.",
+        "5. Close escrow vault ATA + state PDA, rent → sender."
+      ],
+      "discriminator": [
+        96,
+        158,
+        92,
+        101,
+        224,
+        96,
+        10,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "claim_authority",
+          "docs": [
+            "OTP verification co-signer"
+          ],
+          "signer": true,
+          "address": "5JWiQfGELyHtntzkiDgs57PGTHgAFQ3D5ia5S6RdJjpz"
+        },
+        {
+          "name": "claimant",
+          "docs": [
+            "New claimant — must sign to receive tokens and SOL"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender",
+          "docs": [
+            "Original sender — receives rent from both closed accounts"
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_token_state",
+          "docs": [
+            "Escrow state PDA — closed here, rent → sender"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow_token_state.sender",
+                "account": "EscrowTokenState"
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_token_state.mint",
+                "account": "EscrowTokenState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "Mint — decimals + allowlist check"
+          ]
+        },
+        {
+          "name": "escrow_token",
+          "docs": [
+            "Escrow vault ATA — source, closed in instruction body, rent → sender"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "escrow_token_state"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "claimant_token",
+          "docs": [
+            "Claimant's canonical ATA — created here if missing, payer = provider_native"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "claimant"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "provider_token",
+          "docs": [
+            "Provider USDC token account — receives swap fee carve-out"
+          ],
+          "writable": true
+        },
+        {
+          "name": "provider_native",
+          "docs": [
+            "Provider native wallet — sends SOL to claimant"
+          ],
+          "writable": true,
+          "signer": true,
+          "address": "5JWiQfGELyHtntzkiDgs57PGTHgAFQ3D5ia5S6RdJjpz"
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "swap_amount_tokens",
+          "type": "u64"
+        },
+        {
+          "name": "tx4_fee",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "delete_phone",
+      "docs": [
+        "Delete a phone registration. Only the owner can delete their own registry."
+      ],
+      "discriminator": [
+        70,
+        11,
+        254,
+        13,
+        61,
+        19,
+        203,
+        56
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "writable": true,
+          "signer": true
         },
         {
           "name": "registry",
@@ -140,6 +440,222 @@
       "args": []
     },
     {
+      "name": "refund_escrow_token",
+      "docs": [
+        "Refund expired token escrow. Permissionless — program enforces 72h check.",
+        "Closes vault ATA and state PDA, all rent returned to original sender."
+      ],
+      "discriminator": [
+        49,
+        55,
+        245,
+        217,
+        61,
+        235,
+        239,
+        254
+      ],
+      "accounts": [
+        {
+          "name": "payer",
+          "docs": [
+            "Anyone can call — pays tx fee"
+          ],
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "sender",
+          "docs": [
+            "Original sender — receives tokens + all rent"
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_token_state",
+          "docs": [
+            "Escrow state PDA — closed here, rent → sender"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "escrow_token_state.sender",
+                "account": "EscrowTokenState"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_token_state.phone_hash",
+                "account": "EscrowTokenState"
+              },
+              {
+                "kind": "account",
+                "path": "escrow_token_state.mint",
+                "account": "EscrowTokenState"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "Mint — decimals"
+          ]
+        },
+        {
+          "name": "escrow_token",
+          "docs": [
+            "Escrow vault ATA — source, closed in instruction body, rent → sender"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "escrow_token_state"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "sender_token",
+          "docs": [
+            "Sender's canonical ATA — receives refunded tokens"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "sender"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "register_phone",
       "docs": [
         "Register a phone number to a wallet. Requires claim_authority co-sign (post-OTP)."
@@ -163,7 +679,7 @@
         {
           "name": "claim_authority",
           "signer": true,
-          "address": "Ga5Xonhi7vWhhgmRcBbdRCeeVM5PCu1FiEThf6BEGt1x"
+          "address": "5JWiQfGELyHtntzkiDgs57PGTHgAFQ3D5ia5S6RdJjpz"
         },
         {
           "name": "registry",
@@ -282,6 +798,160 @@
       ]
     },
     {
+      "name": "send_direct_token",
+      "docs": [
+        "Send tokens directly to a registered phone's canonical ATA.",
+        "Auto-creates recipient ATA if missing (payer = sender)."
+      ],
+      "discriminator": [
+        162,
+        116,
+        84,
+        89,
+        226,
+        179,
+        55,
+        63
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "registry",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  114,
+                  101,
+                  103,
+                  105,
+                  115,
+                  116,
+                  114,
+                  121
+                ]
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "Mint — used for allowlist check, decimals, and ATA derivation"
+          ]
+        },
+        {
+          "name": "sender_token",
+          "docs": [
+            "Sender's token account"
+          ],
+          "writable": true
+        },
+        {
+          "name": "recipient_wallet",
+          "docs": [
+            "Recipient's wallet — must match registry.wallet"
+          ]
+        },
+        {
+          "name": "recipient_token",
+          "docs": [
+            "Recipient's canonical ATA — auto-created if missing, payer = sender"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "recipient_wallet"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "_phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
       "name": "send_escrow",
       "docs": [
         "Send SOL to an unregistered phone. Creates escrow for them to claim."
@@ -349,6 +1019,170 @@
           "type": "u64"
         }
       ]
+    },
+    {
+      "name": "send_escrow_token",
+      "docs": [
+        "Send tokens to an unregistered phone.",
+        "Creates escrow state PDA + vault ATA owned by that PDA."
+      ],
+      "discriminator": [
+        218,
+        132,
+        72,
+        117,
+        89,
+        37,
+        228,
+        116
+      ],
+      "accounts": [
+        {
+          "name": "sender",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "mint",
+          "docs": [
+            "Mint — allowlist check, decimals, ATA derivation"
+          ]
+        },
+        {
+          "name": "sender_token",
+          "docs": [
+            "Sender's token account (source)"
+          ],
+          "writable": true
+        },
+        {
+          "name": "escrow_token_state",
+          "docs": [
+            "Escrow state PDA — created here, acts as authority over escrow_token"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  101,
+                  115,
+                  99,
+                  114,
+                  111,
+                  119,
+                  95,
+                  116,
+                  111,
+                  107,
+                  101,
+                  110
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "sender"
+              },
+              {
+                "kind": "arg",
+                "path": "phone_hash"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ]
+          }
+        },
+        {
+          "name": "escrow_token",
+          "docs": [
+            "Escrow vault ATA — created here, owned by escrow_token_state PDA"
+          ],
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "account",
+                "path": "escrow_token_state"
+              },
+              {
+                "kind": "account",
+                "path": "token_program"
+              },
+              {
+                "kind": "account",
+                "path": "mint"
+              }
+            ],
+            "program": {
+              "kind": "const",
+              "value": [
+                140,
+                151,
+                37,
+                143,
+                78,
+                36,
+                137,
+                241,
+                187,
+                61,
+                16,
+                41,
+                20,
+                142,
+                13,
+                131,
+                11,
+                90,
+                19,
+                153,
+                218,
+                255,
+                16,
+                132,
+                4,
+                142,
+                123,
+                216,
+                219,
+                233,
+                248,
+                89
+              ]
+            }
+          }
+        },
+        {
+          "name": "token_program",
+          "address": "TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA"
+        },
+        {
+          "name": "associated_token_program",
+          "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "phone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        }
+      ]
     }
   ],
   "accounts": [
@@ -363,6 +1197,19 @@
         225,
         125,
         135
+      ]
+    },
+    {
+      "name": "EscrowTokenState",
+      "discriminator": [
+        33,
+        2,
+        122,
+        39,
+        220,
+        84,
+        188,
+        102
       ]
     },
     {
@@ -383,7 +1230,7 @@
     {
       "code": 6000,
       "name": "Unauthorized",
-      "msg": "Unauthorized: invalid claim authority"
+      "msg": "Unauthorized: invalid claim authority or provider"
     },
     {
       "code": 6001,
@@ -404,6 +1251,21 @@
       "code": 6004,
       "name": "InvalidRecipient",
       "msg": "Recipient wallet does not match registry"
+    },
+    {
+      "code": 6005,
+      "name": "InvalidMint",
+      "msg": "Token mint not allowed (must be USDC)"
+    },
+    {
+      "code": 6006,
+      "name": "MathOverflow",
+      "msg": "Math overflow in calculation"
+    },
+    {
+      "code": 6007,
+      "name": "InsufficientEscrowAmount",
+      "msg": "Escrow amount too small to cover swap fees"
     }
   ],
   "types": [
@@ -432,6 +1294,43 @@
           {
             "name": "created_at",
             "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EscrowTokenState",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "sender",
+            "type": "pubkey"
+          },
+          {
+            "name": "phone_hash",
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "amount",
+            "type": "u64"
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "mint",
+            "type": "pubkey"
           },
           {
             "name": "bump",

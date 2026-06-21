@@ -8,6 +8,9 @@ import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
 import { useConnection, useWallet } from "@solana/wallet-adapter-react";
 import { Keypair, LAMPORTS_PER_SOL, PublicKey, SendTransactionError, Transaction } from "@solana/web3.js";
+
+const ESCROW_NATIVE_SIZE = 89;
+const ESCROW_TOKEN_SIZE = 121;
 import { CountryCode } from "libphonenumber-js";
 import { BACKEND_URL } from "@/lib/constants";
 import { downloadSecretKey, generateClaimKeypair } from "@/lib/walletless";
@@ -62,6 +65,9 @@ interface EscrowData {
   amount: number;
   sender: string;
   createdAt: number;
+  type: "native" | "token";
+  displayAmount: string;
+  displaySymbol: string;
 }
 
 // --- Main Page Component (with Suspense for searchParams) ---
@@ -90,7 +96,7 @@ function ClaimPageInner() {
 // --- Direct Claim Flow (when arriving via claim link) ---
 function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string; claimPhone: string | null }) {
   const { connection } = useConnection();
-  const { publicKey, signTransaction } = useWallet();
+  const { publicKey, signAllTransactions } = useWallet();
 
   const [state, setState] = useState<ClaimState>("loading");
   const [claimMode, setClaimMode] = useState<ClaimMode | null>(null);
@@ -117,20 +123,44 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
 
   async function loadEscrow() {
     try {
-      const pubkey = new PublicKey(escrowAddress);
+      const pubkey = new PublicKey(escrowAddress!);
       const info = await connection.getAccountInfo(pubkey);
       if (!info) {
         setState("already_claimed");
         return;
       }
       const data = info.data;
-      const sender = new PublicKey(data.slice(8, 40));
-      const amountBuf = data.slice(72, 80);
-      const amount = Number(new DataView(amountBuf.buffer, amountBuf.byteOffset).getBigUint64(0, true)) / LAMPORTS_PER_SOL;
-      const createdAtBuf = data.slice(80, 88);
-      const createdAt = Number(new DataView(createdAtBuf.buffer, createdAtBuf.byteOffset).getBigInt64(0, true));
+      const senderShort = new PublicKey(data.slice(8, 40)).toString().slice(0, 8) + "...";
+      const amountRaw = Number(
+        new DataView(data.slice(72, 80).buffer, data.slice(72, 80).byteOffset).getBigUint64(0, true),
+      );
+      const createdAt = Number(
+        new DataView(data.slice(80, 88).buffer, data.slice(80, 88).byteOffset).getBigInt64(0, true),
+      );
 
-      setEscrowData({ amount, sender: sender.toString().slice(0, 8) + "...", createdAt });
+      if (data.length === ESCROW_NATIVE_SIZE) {
+        const amount = amountRaw / LAMPORTS_PER_SOL;
+        setEscrowData({
+          amount,
+          sender: senderShort,
+          createdAt,
+          type: "native",
+          displayAmount: amount.toFixed(4),
+          displaySymbol: "SOL",
+        });
+      } else if (data.length === ESCROW_TOKEN_SIZE) {
+        setEscrowData({
+          amount: amountRaw,
+          sender: senderShort,
+          createdAt,
+          type: "token",
+          displayAmount: (amountRaw / 1_000_000).toFixed(6),
+          displaySymbol: "USDC",
+        });
+      } else {
+        throw new Error(`Unrecognised escrow size: ${data.length}`);
+      }
+
       setState("choose_mode");
     } catch (err: any) {
       setMessage("Failed to load escrow: " + err.message);
@@ -208,28 +238,35 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
           escrow_address: escrowAddress,
           code: otpCode,
           claimant_wallet: claimantWallet.toString(),
-          claim_mode: claimMode,
           ...(phonePayload ? { phone: phonePayload } : {}),
         }),
       });
-      const data = await resp.json();
-      if (!resp.ok) throw new Error(data.error || "Verification failed");
+      const respData = await resp.json();
+      if (!resp.ok) throw new Error(respData.error || "Verification failed");
 
-      const tx = Transaction.from(Buffer.from(data.transaction, "base64"));
+      let tx1 = Transaction.from(Buffer.from(respData.transaction, "base64"));
+      let tx2 = Transaction.from(Buffer.from(respData.register_transaction, "base64"));
 
-      let signedTx: Transaction;
       if (claimMode === "generated") {
-        tx.partialSign(generatedKeypair!);
-        signedTx = tx;
+        // Silent — no user interaction needed
+        tx1.partialSign(generatedKeypair!);
+        tx2.partialSign(generatedKeypair!);
       } else {
-        if (!signTransaction) throw new Error("Wallet cannot sign transaction");
-        signedTx = await signTransaction(tx);
+        // One wallet popup for both
+        if (!signAllTransactions) throw new Error("Wallet does not support signAllTransactions");
+        const signed = await signAllTransactions([tx1, tx2]);
+        tx1 = signed[0];
+        tx2 = signed[1];
       }
 
-      const sig = await connection.sendRawTransaction(signedTx.serialize());
-      await connection.confirmTransaction(sig, "confirmed");
+      // Submit claim tx, wait, then submit register tx
+      const sig1 = await connection.sendRawTransaction(tx1.serialize());
+      await connection.confirmTransaction(sig1, "confirmed");
 
-      setTxSig(sig);
+      const sig2 = await connection.sendRawTransaction(tx2.serialize());
+      await connection.confirmTransaction(sig2, "confirmed");
+
+      setTxSig(sig1);
       setState("success");
     } catch (err: any) {
       console.error("Claim failed:", err);
@@ -269,7 +306,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
             </div>
 
             <div className="w-32 h-32 max-sm:w-24 max-sm:h-24 mx-auto bg-[#B8FF4F] rounded-full border-2 border-[#0B2818] flex flex-col items-center justify-center mb-6 max-sm:mb-4 shadow-[4px_4px_0_0_#0B2818] max-sm:shadow-[3px_3px_0_0_#0B2818] animate-hover-up-down">
-              <span className="font-[fraunces] font-black text-2xl max-sm:text-lg text-[#0B2818] leading-none">{escrowData.amount.toFixed(4)} SOL</span>
+              <span className="font-[fraunces] font-black text-2xl max-sm:text-lg text-[#0B2818] leading-none">{escrowData.displayAmount} {escrowData.displaySymbol}</span>
               <span className="text-[#0B2818] text-xs max-sm:text-[10px] font-bold mt-1 uppercase tracking-widest">Waiting</span>
             </div>
 
@@ -324,7 +361,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
                     <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">Phone Number</label>
                     <div className="flex gap-2 mb-4 max-sm:mb-3">
                       <ClaimCountrySelect value={selectedCountry.code} onChange={setSelectedCountry} />
-                      <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
+                      <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleSendOtp()} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
                     </div>
                   </>
                 )}
@@ -339,7 +376,7 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
             {state === "otp_input" && (
               <div className="border border-gray-300 rounded-[1.5rem] max-sm:rounded-[1rem] p-5 max-sm:p-4 text-left bg-white mt-4">
                 <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">6-Digit Verification Code</label>
-                <input type="text" value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 w-full mb-4 max-sm:mb-3 focus:outline-none focus:ring-2 focus:ring-[#B8FF4F] focus:border-transparent text-[#0B2818] text-sm max-sm:text-xs font-[outfit] tracking-[0.3em] text-center text-lg" placeholder="XXXXXX" maxLength={6} autoFocus />
+                <input type="text" value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => { if (e.key === "Enter" && otpCode.length === 6) handleVerifyAndClaim() }} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 w-full mb-4 max-sm:mb-3 focus:outline-none focus:ring-2 focus:ring-[#B8FF4F] focus:border-transparent text-[#0B2818] text-sm max-sm:text-xs font-[outfit] tracking-[0.3em] text-center text-lg" placeholder="XXXXXX" maxLength={6} autoFocus />
                 <button onClick={handleVerifyAndClaim} disabled={otpCode.length !== 6} className="w-full bg-[#B8FF4F] text-[#0B2818] font-bold py-4 max-sm:py-3 rounded-xl shadow-[0_4px_0_0_#8ABF3B] hover:translate-y-[2px] hover:shadow-[0_2px_0_0_#8ABF3B] active:translate-y-[4px] active:shadow-none transition-all text-base max-sm:text-sm disabled:opacity-50">
                   Verify & Claim
                 </button>
@@ -369,7 +406,8 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
         {/* Success */}
         {state === "success" && (
           <SuccessModal
-            amount={escrowData?.amount || 0}
+            displayAmount={escrowData?.displayAmount || ""}
+            displaySymbol={escrowData?.displaySymbol || "SOL"}
             wallet={claimantWallet?.toString() || ""}
             txSig={txSig}
             onClose={() => window.location.href = "/"}
@@ -553,11 +591,11 @@ function ClaimDetailView({ tx, onClaim, showModal, onCloseModal, onCloseDetail }
           <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">Phone Number</label>
           <div className="flex gap-2 mb-4 max-sm:mb-3">
             <ClaimCountrySelect value={selectedCountry.code} onChange={setSelectedCountry} />
-            <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
+            <input type="tel" value={phoneInput} onChange={(e) => setPhoneInput(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") document.getElementById("claim-otp-input")?.focus() }} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 flex-1 w-full focus:outline-none focus:border-[#B8FF4F] focus:ring-2 focus:ring-[#B8FF4F] text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="Enter phone number" />
           </div>
 
           <label className="text-xs max-sm:text-[10px] font-bold text-gray-500 uppercase tracking-widest mb-2 max-sm:mb-1.5 block font-[outfit]">6-Digit Verification Code</label>
-          <input type="text" value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 w-full mb-4 max-sm:mb-3 focus:outline-none focus:ring-2 focus:ring-[#B8FF4F] focus:border-transparent text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="XXXXXX" maxLength={6} />
+          <input id="claim-otp-input" type="text" value={otpCode} onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, "").slice(0, 6))} onKeyDown={(e) => { if (e.key === "Enter" && otpCode.length === 6) onClaim() }} className="border border-gray-300 rounded-xl max-sm:rounded-lg px-4 max-sm:px-3 py-3 max-sm:py-2.5 w-full mb-4 max-sm:mb-3 focus:outline-none focus:ring-2 focus:ring-[#B8FF4F] focus:border-transparent text-[#0B2818] text-sm max-sm:text-xs font-[outfit]" placeholder="XXXXXX" maxLength={6} />
 
           <div className="flex items-center gap-3 max-sm:gap-2 mb-6 max-sm:mb-4">
             <div className="w-10 h-10 max-sm:w-8 max-sm:h-8 rounded-full border border-gray-300 flex items-center justify-center text-gray-400 text-sm max-sm:text-xs font-[outfit]">00</div>
@@ -607,7 +645,7 @@ function ClaimSuccessModal({ tx, onClose }: { tx: any; onClose: () => void }) {
 }
 
 // --- Success Modal for direct claim flow ---
-function SuccessModal({ amount, wallet, txSig, onClose }: { amount: number; wallet: string; txSig: string; onClose: () => void }) {
+function SuccessModal({ displayAmount, displaySymbol, wallet, txSig, onClose }: { displayAmount: string; displaySymbol: string; wallet: string; txSig: string; onClose: () => void }) {
   return (
     <div className="fixed inset-0 bg-[#0B2818]/80 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
       <div className="bg-[#F6F4EE] rounded-[2rem] w-full max-w-sm p-8 text-center relative shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -616,9 +654,9 @@ function SuccessModal({ amount, wallet, txSig, onClose }: { amount: number; wall
           <Check className="w-10 h-10 text-[#B8FF4F]" strokeWidth={3} />
         </div>
         <h2 className="font-[fraunces] text-3xl font-black text-[#0B2818] mb-1">Money <span className="italic font-normal">Claimed!</span></h2>
-        <p className="text-gray-500 text-sm mb-6">You received {amount.toFixed(4)} SOL!</p>
+        <p className="text-gray-500 text-sm mb-6">You received {displayAmount} {displaySymbol}!</p>
         <div className="border border-gray-300 bg-white rounded-2xl overflow-hidden mb-6 text-sm">
-          <div className="flex justify-between p-4 border-b border-gray-200"><span className="text-gray-500">Amount</span><span className="font-bold text-[#0B2818]">{amount.toFixed(4)} SOL</span></div>
+          <div className="flex justify-between p-4 border-b border-gray-200"><span className="text-gray-500">Amount</span><span className="font-bold text-[#0B2818]">{displayAmount} {displaySymbol}</span></div>
           <div className="flex justify-between p-4 border-b border-gray-200"><span className="text-gray-500">Wallet</span><span className="font-bold text-[#0B2818] truncate max-w-[180px]">{wallet.slice(0, 6)}...{wallet.slice(-4)}</span></div>
           <div className="flex justify-between p-4"><span className="text-gray-500">Status</span><span className="font-bold text-[#22C55E]">In your wallet</span></div>
         </div>

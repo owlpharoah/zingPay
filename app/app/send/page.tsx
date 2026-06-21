@@ -5,10 +5,11 @@ import AppHeader from "@/components/AppHeader"
 import AppFooter from "@/components/AppFooter"
 import { useConnection, useWallet } from "@solana/wallet-adapter-react"
 import { PublicKey, SystemProgram, Transaction, LAMPORTS_PER_SOL } from "@solana/web3.js"
+import { TOKEN_PROGRAM_ID, ASSOCIATED_TOKEN_PROGRAM_ID } from "@solana/spl-token"
 import { parsePhoneNumberFromString, CountryCode } from "libphonenumber-js"
 import { hashPhone, toHex } from "@/lib/hash"
-import { getRegistryPda, getEscrowPda } from "@/lib/program"
-import { PROGRAM_ID, BACKEND_URL } from "@/lib/constants"
+import { getRegistryPda, getEscrowPda, getEscrowTokenStatePda, getAta } from "@/lib/program"
+import { PROGRAM_ID, BACKEND_URL, USDC_MINT } from "@/lib/constants"
 import { getDialOption } from "@/lib/phone"
 import { CountryCodeSelect } from "@/components/CountryCodeSelect"
 import { CurrencySelect } from "@/components/CurrencySelect"
@@ -20,11 +21,10 @@ const ESCROW_EXPIRY_SECONDS = 72 * 3600
 // expose these as `vs_currencies`, so we price SOL against their own USD price.
 const STABLECOINS: Record<string, string> = {
   USDC: "usd-coin",
-  USDG: "global-dollar",
 }
 
 // Currencies always pinned to the top of the dropdown, in this order.
-const PINNED_CURRENCIES = ["SOL", "USDC", "USDG"]
+const PINNED_CURRENCIES = ["SOL", "USDC"]
 
 // Shown until the live CoinGecko currency list loads (or if it fails).
 const FALLBACK_CURRENCIES = [...PINNED_CURRENCIES, "USD", "INR", "EUR", "GBP", "JPY", "AED", "SGD"]
@@ -36,6 +36,9 @@ type PendingEscrow = {
   amountSol: number
   createdAt: number
   expiresAt: number
+  token?: boolean
+  symbol?: string
+  amountUi?: string
 }
 
 export default function Send() {
@@ -195,6 +198,11 @@ export default function Send() {
           phone: pendingEscrow.phone,
           phone_hash: pendingEscrow.phoneHashHex,
           escrow_address: pendingEscrow.escrow,
+          ...(pendingEscrow.token && {
+            token: true,
+            symbol: pendingEscrow.symbol,
+            amount_ui: pendingEscrow.amountUi,
+          }),
         }),
       })
       const notifyData = await notifyResp.json().catch(() => ({ error: "Unknown error" }))
@@ -226,17 +234,28 @@ export default function Send() {
       return
     }
 
+    const isUsdc = currency === "USDC"
+
     const computedSolAmount = currency === "SOL"
       ? parseFloat(amount)
-      : solRate > 0 ? parseFloat(amount) / solRate : NaN
+      : isUsdc ? 0 : (solRate > 0 ? parseFloat(amount) / solRate : NaN)
 
-    if (!computedSolAmount || computedSolAmount <= 0) {
+    if (!isUsdc && (!computedSolAmount || computedSolAmount <= 0)) {
       setMessage(currency === "SOL" ? "Enter a valid SOL amount" : `Enter a valid ${currency} amount`)
       setStatus("error")
       return
     }
 
-    if (currency !== "SOL" && (!solRate || rateError)) {
+    if (isUsdc) {
+      const usdcFloat = parseFloat(amount)
+      if (!usdcFloat || usdcFloat <= 0) {
+        setMessage("Enter a valid USDC amount")
+        setStatus("error")
+        return
+      }
+    }
+
+    if (currency !== "SOL" && !isUsdc && (!solRate || rateError)) {
       setMessage(`Cannot convert ${currency} to SOL right now. Try again.`)
       setStatus("error")
       return
@@ -267,37 +286,15 @@ export default function Send() {
     try {
       const phoneHash = await hashPhone(phoneE164)
       const phoneHashArray = Array.from(phoneHash)
-      const lamports = Math.round(computedSolAmount * LAMPORTS_PER_SOL)
 
       // Check if phone is registered
       const [registryPda] = getRegistryPda(phoneHash)
       const registryInfo = await connection.getAccountInfo(registryPda)
       const isRegistered = registryInfo !== null
 
-      const [escrowPda] = getEscrowPda(publicKey, phoneHash)
-
-      if (!isRegistered) {
-        const existingEscrowInfo = await connection.getAccountInfo(escrowPda)
-        if (existingEscrowInfo) {
-          const details = readEscrowDetails(existingEscrowInfo.data)
-          setPendingEscrow({
-            escrow: escrowPda.toString(),
-            phone: phoneE164,
-            phoneHashHex: toHex(phoneHash),
-            amountSol: details.amountSol,
-            createdAt: details.createdAt,
-            expiresAt: details.expiresAt,
-          })
-          setStatus("partial_success")
-          setMessage(`A pending escrow already exists for ${phoneE164}. Resend claim link instead of creating a new escrow.`)
-          return
-        }
-      }
-
-      // Load IDL
+      // Load IDL + program (read-only dummy wallet — sendTransaction handles actual signing)
       const idlResp = await fetch("/idl/solpay.json")
       const idl = await idlResp.json()
-
       const dummyWallet = {
         publicKey,
         signTransaction: async (tx: any) => tx,
@@ -306,78 +303,222 @@ export default function Send() {
       const provider = new anchor.AnchorProvider(connection, dummyWallet as any, { commitment: "confirmed" })
       const program = new anchor.Program(idl, provider)
 
-      let ix
-      if (isRegistered) {
-        const registryAccount = await (program.account as any).registryAccount.fetch(registryPda)
-        const recipientWallet = registryAccount.wallet as PublicKey
+      let sig: string
 
-        ix = await program.methods
-          .sendDirect(phoneHashArray, new anchor.BN(lamports))
-          .accounts({
-            sender: publicKey,
-            registry: registryPda,
-            recipientWallet: recipientWallet,
-            systemProgram: SystemProgram.programId,
-          })
-          .instruction()
-      } else {
-        ix = await program.methods
-          .sendEscrow(phoneHashArray, new anchor.BN(lamports))
-          .accounts({
-            sender: publicKey,
-            escrow: escrowPda,
-            systemProgram: SystemProgram.programId,
-          })
-          .instruction()
-      }
+      if (isUsdc) {
+        // ── USDC token path ───────────────────────────────────────────────
+        const usdcMicroTokens = Math.round(parseFloat(amount) * 1_000_000)
+        const senderAta = getAta(publicKey, USDC_MINT)
 
-      const tx = new Transaction().add(ix)
-      tx.feePayer = publicKey
-      tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+        let ix
+        let escrowAddress: string | null = null
 
-      const sig = await sendTransaction(tx, connection)
-      await connection.confirmTransaction(sig, "confirmed")
+        if (isRegistered) {
+          const registryAccount = await (program.account as any).registryAccount.fetch(registryPda)
+          const recipientWallet = registryAccount.wallet as PublicKey
+          const recipientAta = getAta(recipientWallet, USDC_MINT)
 
-      setTxSig(sig)
-      setSendMode(isRegistered ? "direct" : "escrow")
-      appendHistoryRecord({
-        txSig: sig,
-        phone: phoneE164,
-        amountSol: computedSolAmount.toFixed(6),
-        mode: isRegistered ? "direct" : "escrow",
-        createdAt: Date.now(),
-      })
+          ix = await program.methods
+            .sendDirectToken(phoneHashArray, new anchor.BN(usdcMicroTokens))
+            .accounts({
+              sender: publicKey,
+              registry: registryPda,
+              mint: USDC_MINT,
+              senderToken: senderAta,
+              recipientWallet,
+              recipientToken: recipientAta,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+              systemProgram: SystemProgram.programId,
+            })
+            .instruction()
+        } else {
+          const [escrowTokenPda] = getEscrowTokenStatePda(publicKey, phoneHash, USDC_MINT)
+          const escrowVaultAta = getAta(escrowTokenPda, USDC_MINT)
+          escrowAddress = escrowTokenPda.toString()
 
-      if (!isRegistered) {
-        try {
-          const notifyResp = await fetch(`${BACKEND_URL}/notify`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
+          // Check for existing token escrow
+          const existing = await connection.getAccountInfo(escrowTokenPda)
+          if (existing) {
+            const nowSec = Math.floor(Date.now() / 1000)
+            setPendingEscrow({
+              escrow: escrowAddress,
               phone: phoneE164,
-              phone_hash: toHex(phoneHash),
-              escrow_address: escrowPda.toString(),
-            }),
-          })
-          const notifyData = await notifyResp.json().catch(() => ({ error: "Unknown error" }))
-          if (!notifyResp.ok) throw new Error(notifyData.error || "Failed to send SMS")
-          setMessage(`Escrow created! SMS sent to ${phoneE164}. They have 72h to claim.`)
+              phoneHashHex: toHex(phoneHash),
+              amountSol: parseFloat(amount),
+              createdAt: nowSec,
+              expiresAt: nowSec + ESCROW_EXPIRY_SECONDS,
+            })
+            setStatus("partial_success")
+            setMessage(`A pending USDC escrow already exists for ${phoneE164}. Resend claim link instead.`)
+            return
+          }
+
+          ix = await program.methods
+            .sendEscrowToken(phoneHashArray, new anchor.BN(usdcMicroTokens))
+            .accounts({
+              sender: publicKey,
+              mint: USDC_MINT,
+              senderToken: senderAta,
+              escrowTokenState: escrowTokenPda,
+              escrowToken: escrowVaultAta,
+              tokenProgram: TOKEN_PROGRAM_ID,
+              associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+              systemProgram: SystemProgram.programId,
+            })
+            .instruction()
+        }
+
+        const tx = new Transaction().add(ix)
+        tx.feePayer = publicKey
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+        sig = await sendTransaction(tx, connection)
+        await connection.confirmTransaction(sig, "confirmed")
+
+        setTxSig(sig)
+        setSendMode(isRegistered ? "direct" : "escrow")
+        appendHistoryRecord({
+          txSig: sig,
+          phone: phoneE164,
+          amountSol: amount,
+          mode: isRegistered ? "direct" : "escrow",
+          createdAt: Date.now(),
+        })
+
+        if (!isRegistered && escrowAddress) {
+          try {
+            const notifyResp = await fetch(`${BACKEND_URL}/notify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                phone: phoneE164,
+                phone_hash: toHex(phoneHash),
+                escrow_address: escrowAddress,
+                token: true,
+                symbol: "USDC",
+                amount_ui: amount,
+              }),
+            })
+            const notifyData = await notifyResp.json().catch(() => ({ error: "Unknown error" }))
+            if (!notifyResp.ok) throw new Error(notifyData.error || "Failed to send SMS")
+            setMessage(`USDC escrow created! SMS sent to ${phoneE164}. They have 72h to claim.`)
+            setStatus("success")
+          } catch {
+            setMessage(`USDC escrow created, but SMS could not be sent. Share the claim link manually.`)
+            setPendingEscrow({
+              escrow: escrowAddress!,
+              phone: phoneE164,
+              phoneHashHex: toHex(phoneHash),
+              amountSol: parseFloat(amount),
+              createdAt: Math.floor(Date.now() / 1000),
+              expiresAt: Math.floor(Date.now() / 1000) + ESCROW_EXPIRY_SECONDS,
+              token: true,
+              symbol: "USDC",
+              amountUi: amount,
+            })
+            setStatus("partial_success")
+          }
+        } else {
+          setMessage("USDC sent directly to registered wallet!")
           setStatus("success")
-        } catch {
-          setMessage(`Escrow created, but SMS could not be sent. Share the claim link manually.`)
-          setPendingEscrow({
-            escrow: escrowPda.toString(),
-            phone: phoneE164,
-            phoneHashHex: toHex(phoneHash),
-            amountSol: computedSolAmount,
-            createdAt: Math.floor(Date.now() / 1000),
-            expiresAt: Math.floor(Date.now() / 1000) + ESCROW_EXPIRY_SECONDS,
-          })
-          setStatus("partial_success")
         }
       } else {
-        setMessage("SOL sent directly to registered wallet!")
-        setStatus("success")
+        // ── SOL path ──────────────────────────────────────────────────────
+        const lamports = Math.round(computedSolAmount * LAMPORTS_PER_SOL)
+        const [escrowPda] = getEscrowPda(publicKey, phoneHash)
+
+        if (!isRegistered) {
+          const existingEscrowInfo = await connection.getAccountInfo(escrowPda)
+          if (existingEscrowInfo) {
+            const details = readEscrowDetails(existingEscrowInfo.data)
+            setPendingEscrow({
+              escrow: escrowPda.toString(),
+              phone: phoneE164,
+              phoneHashHex: toHex(phoneHash),
+              amountSol: details.amountSol,
+              createdAt: details.createdAt,
+              expiresAt: details.expiresAt,
+            })
+            setStatus("partial_success")
+            setMessage(`A pending escrow already exists for ${phoneE164}. Resend claim link instead of creating a new escrow.`)
+            return
+          }
+        }
+
+        let ix
+        if (isRegistered) {
+          const registryAccount = await (program.account as any).registryAccount.fetch(registryPda)
+          const recipientWallet = registryAccount.wallet as PublicKey
+
+          ix = await program.methods
+            .sendDirect(phoneHashArray, new anchor.BN(lamports))
+            .accounts({
+              sender: publicKey,
+              registry: registryPda,
+              recipientWallet,
+              systemProgram: SystemProgram.programId,
+            })
+            .instruction()
+        } else {
+          ix = await program.methods
+            .sendEscrow(phoneHashArray, new anchor.BN(lamports))
+            .accounts({
+              sender: publicKey,
+              escrow: escrowPda,
+              systemProgram: SystemProgram.programId,
+            })
+            .instruction()
+        }
+
+        const tx = new Transaction().add(ix)
+        tx.feePayer = publicKey
+        tx.recentBlockhash = (await connection.getLatestBlockhash()).blockhash
+
+        sig = await sendTransaction(tx, connection)
+        await connection.confirmTransaction(sig, "confirmed")
+
+        setTxSig(sig)
+        setSendMode(isRegistered ? "direct" : "escrow")
+        appendHistoryRecord({
+          txSig: sig,
+          phone: phoneE164,
+          amountSol: computedSolAmount.toFixed(6),
+          mode: isRegistered ? "direct" : "escrow",
+          createdAt: Date.now(),
+        })
+
+        if (!isRegistered) {
+          try {
+            const notifyResp = await fetch(`${BACKEND_URL}/notify`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                phone: phoneE164,
+                phone_hash: toHex(phoneHash),
+                escrow_address: escrowPda.toString(),
+                amount_ui: computedSolAmount.toFixed(4),
+              }),
+            })
+            const notifyData = await notifyResp.json().catch(() => ({ error: "Unknown error" }))
+            if (!notifyResp.ok) throw new Error(notifyData.error || "Failed to send SMS")
+            setMessage(`Escrow created! SMS sent to ${phoneE164}. They have 72h to claim.`)
+            setStatus("success")
+          } catch {
+            setMessage(`Escrow created, but SMS could not be sent. Share the claim link manually.`)
+            setPendingEscrow({
+              escrow: escrowPda.toString(),
+              phone: phoneE164,
+              phoneHashHex: toHex(phoneHash),
+              amountSol: computedSolAmount,
+              createdAt: Math.floor(Date.now() / 1000),
+              expiresAt: Math.floor(Date.now() / 1000) + ESCROW_EXPIRY_SECONDS,
+            })
+            setStatus("partial_success")
+          }
+        } else {
+          setMessage("SOL sent directly to registered wallet!")
+          setStatus("success")
+        }
       }
     } catch (err: any) {
       console.error("Send failed:", err)
@@ -576,7 +717,7 @@ export default function Send() {
             <h3 className="text-sm font-bold text-[#0B2818]">Pending escrow found</h3>
             <div className="text-xs text-[#4B5563] space-y-1">
               <p>Phone: {pendingEscrow.phone}</p>
-              <p>Escrow amount: {pendingEscrow.amountSol.toFixed(4)} SOL</p>
+              <p>Escrow amount: {pendingEscrow.token ? `${pendingEscrow.amountUi} ${pendingEscrow.symbol}` : `${pendingEscrow.amountSol.toFixed(4)} SOL`}</p>
               <p>Created: {new Date(pendingEscrow.createdAt * 1000).toLocaleString()}</p>
               <p>Refund timer: {formatTimeLeft(pendingEscrow.expiresAt - Math.floor(Date.now() / 1000))}</p>
             </div>

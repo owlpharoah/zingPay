@@ -284,6 +284,7 @@ export default function Register() {
                       setSelectedCountry={setSelectedCountry}
                       phoneInput={phoneInput}
                       setPhoneInput={setPhoneInput}
+                      onEnter={handleSendOtp}
                     />
                   )}
                   {step === 2 && (
@@ -293,6 +294,7 @@ export default function Register() {
                       setOtpCode={setOtpCode}
                       onResend={handleResendOtp}
                       registerState={registerState}
+                      onSubmit={handleVerifyAndRegister}
                     />
                   )}
                 </motion.div>
@@ -388,7 +390,7 @@ function WelcomeView() {
 }
 
 function PhoneView({
-  isDropdownOpen, setIsDropdownOpen, selectedCountry, setSelectedCountry, phoneInput, setPhoneInput,
+  isDropdownOpen, setIsDropdownOpen, selectedCountry, setSelectedCountry, phoneInput, setPhoneInput, onEnter,
 }: {
   isDropdownOpen: boolean;
   setIsDropdownOpen: (val: boolean) => void;
@@ -396,6 +398,7 @@ function PhoneView({
   setSelectedCountry: (val: DialOption) => void;
   phoneInput: string;
   setPhoneInput: (val: string) => void;
+  onEnter: () => void;
 }) {
   return (
     <div className="flex flex-col h-full text-left px-8 max-sm:px-2 py-4 max-sm:py-0 max-sm:mt-5">
@@ -445,6 +448,7 @@ function PhoneView({
             onChange={(e) => setPhoneInput(e.target.value)}
             className="grow w-full px-4 max-sm:px-3 text-lg max-sm:text-xs outline-none bg-transparent rounded-r-2xl font-[outfit]"
             onFocus={() => setIsDropdownOpen(false)}
+            onKeyDown={(e) => e.key === "Enter" && onEnter()}
           />
         </div>
         <p className="text-xs max-sm:text-[10px] text-gray-400 mt-3 max-sm:mt-2 font-[outfit]">
@@ -461,19 +465,23 @@ function OtpView({
   setOtpCode,
   onResend,
   registerState,
+  onSubmit,
 }: {
   phoneE164: string;
   otpCode: string;
   setOtpCode: (val: string) => void;
   onResend: () => void;
   registerState: RegisterState;
+  onSubmit: () => void;
 }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    // Move to the previous input on Backspace if the current input is empty
     if (e.key === "Backspace" && !otpCode[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "Enter" && otpCode.length === 6) {
+      onSubmit();
     }
   };
 

@@ -7,11 +7,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import AppNav from "@/components/AppNav";
 import AppHeader from "@/components/AppHeader";
 import AppFooter from "@/components/AppFooter";
-import { getDialOption, DialOption } from "@/lib/phone";
+import { getDialOption, DialOption, normalizeToE164 } from "@/lib/phone";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
-import { useWallet } from "@solana/wallet-adapter-react";
+import { useConnection, useWallet } from "@solana/wallet-adapter-react";
+import { Transaction } from "@solana/web3.js";
 import { useRegistration, isLocalhost } from "@/lib/useRegistration";
 import { WalletDropdown } from "@/components/WalletDropdown";
+import { hashPhone, toHex } from "@/lib/hash";
+import { BACKEND_URL } from "@/lib/constants";
 
 // --- Types ---
 type Action = "change" | "delete";
@@ -22,10 +25,6 @@ type Screen =
   | "new-phone"
   | "verify-otp-new"
   | "delete-confirm";
-
-// --- Placeholders (frontend only) ---
-const PLACEHOLDER_PHONE = "+1234 567 8900";
-const PLACEHOLDER_NEW_PHONE = "+1234 567 8901";
 
 // --- Animation Variants ---
 const slideVariants = {
@@ -48,9 +47,10 @@ interface NumberUpdatedModalProps {
   isOpen: boolean;
   onClose: () => void;
   action: Action;
+  newPhone?: string;
 }
 
-function NumberUpdatedModal({ isOpen, onClose, action }: NumberUpdatedModalProps) {
+function NumberUpdatedModal({ isOpen, onClose, action, newPhone }: NumberUpdatedModalProps) {
   const isDelete = action === "delete";
   return (
     <AnimatePresence>
@@ -100,7 +100,7 @@ function NumberUpdatedModal({ isOpen, onClose, action }: NumberUpdatedModalProps
               {!isDelete ? (
                     <div className="w-[85%] max-sm:w-full bg-[#192FFD]/10 border-2 border-[#192FFD] rounded-2xl py-3.5 max-sm:py-3 text-center mb-4">
                     <p className="text-xs font-bold tracking-wider text-gray-500 font-[outfit]">NEW NUMBER</p>
-                    <p className="text-lg max-sm:text-base font-bold text-[#0B2818] font-[outfit]">{PLACEHOLDER_NEW_PHONE}</p>
+                    <p className="text-lg max-sm:text-base font-bold text-[#0B2818] font-[outfit]">{newPhone || "your new number"}</p>
                     </div>
                 ) : (
                     <div className="w-[85%] max-sm:w-full bg-[#192FFD]/10 rounded-2xl py-3.5 max-sm:p-3 text-center mb-4">
@@ -231,6 +231,46 @@ function ModifyGuard({ loading }: { loading: boolean }) {
   );
 }
 
+type ActionErrorInfo = {
+  title: string;
+  hint: string;
+};
+
+function parseActionError(err: any): ActionErrorInfo {
+  const logs: string[] | undefined =
+    err?.logs ?? err?.error?.logs ?? err?.transactionError?.logs;
+  const msg = String(err?.message ?? err?.toString?.() ?? "");
+
+  const inMsg = (s: string) => msg.includes(s);
+  const inLogs = (s: string) => logs?.some((l) => l.includes(s)) ?? false;
+
+  if (inMsg("User rejected") || inMsg("rejected the request") || inMsg("WalletSignTransaction"))
+    return { title: "Transaction cancelled", hint: "You declined the request in your wallet. Try again when ready." };
+
+  if (inMsg("AccountNotInitialized") || inLogs("AccountNotInitialized"))
+    return {
+      title: "Phone not found on-chain",
+      hint: "No registration exists for the number you entered. Check that you typed your number correctly and that you've completed the registration flow.",
+    };
+
+  if (inMsg("Unauthorized") || inLogs("Unauthorized") || inMsg("0x1770") || inLogs("0x1770"))
+    return {
+      title: "Wallet doesn't own this registration",
+      hint: "The connected wallet is not the owner of this phone registration. Make sure you're using the same wallet you registered with.",
+    };
+
+  if (inMsg("ConstraintSeeds") || inLogs("ConstraintSeeds") || inMsg("ConstraintRaw") || inLogs("ConstraintRaw"))
+    return {
+      title: "Phone number mismatch",
+      hint: "The phone number you entered doesn't match your on-chain registration. Enter the exact number you registered.",
+    };
+
+  if (inMsg("InsufficientFunds") || inMsg("insufficient lamports"))
+    return { title: "Insufficient SOL", hint: "Your wallet doesn't have enough SOL to pay the transaction fee." };
+
+  return { title: "Transaction failed", hint: msg || "An unexpected error occurred. Check the browser console for details." };
+}
+
 function ModifyInner() {
   const [screen, setScreen] = useState<Screen>("manage");
   const [action, setAction] = useState<Action>("change");
@@ -241,15 +281,27 @@ function ModifyInner() {
   const [verifyError, setVerifyError] = useState<string | null>(null);
   const [showBackWarning, setShowBackWarning] = useState(false);
 
-  const { publicKey, signMessage } = useWallet();
+  const { connection } = useConnection();
+  const { publicKey, signMessage, signTransaction } = useWallet();
   const walletLabel = publicKey
     ? `${publicKey.toString().slice(0, 4)}...${publicKey.toString().slice(-4)}`
     : null;
 
-  // Form state (placeholders only — no real logic)
+  // Phone identity state
+  const [currentPhone, setCurrentPhone] = useState("");
+  const [currentPhoneHashHex, setCurrentPhoneHashHex] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [actionError, setActionError] = useState<ActionErrorInfo | null>(null);
+  const [isActionSubmitting, setIsActionSubmitting] = useState(false);
+
+  // Form state
   const [selectedCountry, setSelectedCountry] = useState<DialOption>(getDialOption("IN"));
   const [phoneInput, setPhoneInput] = useState("");
   const [otpCode, setOtpCode] = useState("");
+
+  // Verify-identity country selector state
+  const [verifyCountry, setVerifyCountry] = useState<DialOption>(getDialOption("IN"));
+  const [isVerifyCountryOpen, setIsVerifyCountryOpen] = useState(false);
 
   const isDelete = action === "delete";
 
@@ -296,28 +348,123 @@ function ModifyInner() {
   const verifyWithWallet = async () => {
     if (isVerifying) return;
 
-    // Identity is proven by signing a message with the connected wallet.
-    // Without a connected wallet that can sign, there is nothing to verify,
-    // so we never proceed.
     if (!publicKey || !signMessage) {
       setVerifyError("Connect a wallet that can sign messages to verify your identity.");
+      return;
+    }
+    if (!currentPhone.trim()) {
+      setVerifyError("Enter your registered phone number first.");
+      return;
+    }
+
+    const fullPhone = `${verifyCountry.dial}${currentPhone.replace(/\D/g, "")}`;
+    const e164 = normalizeToE164(fullPhone, verifyCountry.code);
+    if (!e164) {
+      setVerifyError("Enter a valid phone number in the selected country format.");
       return;
     }
 
     setIsVerifying(true);
     setVerifyError(null);
     try {
+      const phoneHash = await hashPhone(e164);
+      setCurrentPhoneHashHex(toHex(phoneHash));
+      setCurrentPhone(e164);
+
       const message = new TextEncoder().encode(
-        `ZingPay: verify identity to ${isDelete ? "remove" : "change"} your phone number`
+        `ZingPay: verify identity to ${isDelete ? "remove" : "change"} your phone number`,
       );
       await signMessage(message);
-      // Only a successful signature unlocks the next step.
       go(isDelete ? "delete-confirm" : "new-phone", 1);
     } catch {
-      // User rejected the signature or the wallet errored — stay on this screen.
       setVerifyError("Verification was not completed. Please try again.");
     } finally {
       setIsVerifying(false);
+    }
+  };
+
+  const handleDeletePhone = async () => {
+    if (!publicKey || !signTransaction || !currentPhoneHashHex || isActionSubmitting) return;
+    setIsActionSubmitting(true);
+    setActionError(null);
+    try {
+      const resp = await fetch(`${BACKEND_URL}/phone/build-delete-tx`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone_hash_hex: currentPhoneHashHex, wallet: publicKey.toString() }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Failed to build delete transaction");
+
+      const tx = Transaction.from(Buffer.from(data.transaction, "base64"));
+      const signed = await signTransaction(tx);
+      const sig = await connection.sendRawTransaction(signed.serialize());
+      await connection.confirmTransaction(sig, "confirmed");
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      setActionError(parseActionError(err));
+    } finally {
+      setIsActionSubmitting(false);
+    }
+  };
+
+  const handleSendOtpForNewPhone = async () => {
+    if (isActionSubmitting) return;
+    const e164 = normalizeToE164(
+      `${selectedCountry.dial}${phoneInput.replace(/\D/g, "")}`,
+      selectedCountry.code,
+    );
+    if (!e164) {
+      setActionError({ title: "Invalid phone number", hint: "Enter a valid number for the selected country." });
+      return;
+    }
+    setIsActionSubmitting(true);
+    setActionError(null);
+    try {
+      const resp = await fetch(`${BACKEND_URL}/otp/send-register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ phone: e164 }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Failed to send OTP");
+      setNewPhone(e164);
+      setOtpCode("");
+      go("verify-otp-new", 1);
+    } catch (err: any) {
+      setActionError({ title: "Failed to send OTP", hint: err.message || "Please try again." });
+    } finally {
+      setIsActionSubmitting(false);
+    }
+  };
+
+  const handleVerifyChangePhone = async () => {
+    if (!publicKey || !signTransaction || otpCode.length !== 6 || isActionSubmitting) return;
+    setIsActionSubmitting(true);
+    setActionError(null);
+    try {
+      const resp = await fetch(`${BACKEND_URL}/otp/verify-change`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          old_phone_hash_hex: currentPhoneHashHex,
+          new_phone: newPhone,
+          code: otpCode,
+          wallet: publicKey.toString(),
+        }),
+      });
+      const data = await resp.json();
+      if (!resp.ok) throw new Error(data.error || "Verification failed");
+
+      const tx = Transaction.from(Buffer.from(data.transaction, "base64"));
+      const signed = await signTransaction(tx);
+      const sig = await connection.sendRawTransaction(signed.serialize());
+      await connection.confirmTransaction(sig, "confirmed");
+      setShowSuccessModal(true);
+    } catch (err: any) {
+      setActionError(parseActionError(err));
+    } finally {
+      setIsActionSubmitting(false);
     }
   };
 
@@ -346,7 +493,7 @@ function ModifyInner() {
             )}
 
             {/* Sliding Content */}
-            <div className={`relative grow w-full rounded-[32px] z-0 ${isDropdownOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+            <div className={`relative grow w-full rounded-[32px] z-0 ${isDropdownOpen || isVerifyCountryOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
               <AnimatePresence initial={false} custom={direction} mode="wait">
                 <motion.div
                   key={screen}
@@ -361,18 +508,31 @@ function ModifyInner() {
                   {screen === "manage" && <ManageView accentDot="bg-[#192FFD]" accentBox="bg-[#192FFD]/8" />}
 
                   {screen === "verify-identity" && (
-                    <VerifyIdentityView isDelete={isDelete} accentBox={accentBox} walletLabel={walletLabel} />
+                    <VerifyIdentityView
+                      isDelete={isDelete}
+                      accentBox={accentBox}
+                      walletLabel={walletLabel}
+                      currentPhone={currentPhone}
+                      setCurrentPhone={setCurrentPhone}
+                      accentFocus={accentFocus}
+                      verifyCountry={verifyCountry}
+                      setVerifyCountry={setVerifyCountry}
+                      isVerifyCountryOpen={isVerifyCountryOpen}
+                      setIsVerifyCountryOpen={setIsVerifyCountryOpen}
+                      onEnter={verifyWithWallet}
+                    />
                   )}
 
                   {screen === "verify-otp-new" && (
                     <OtpView
                       step={2}
-                      phone={PLACEHOLDER_NEW_PHONE}
+                      phone={newPhone}
                       otpCode={otpCode}
                       setOtpCode={setOtpCode}
                       accentDot={accentDot}
                       accentLink={accentLink}
                       accentFocus={accentFocus}
+                      onSubmit={handleVerifyChangePhone}
                     />
                   )}
 
@@ -385,10 +545,11 @@ function ModifyInner() {
                       phoneInput={phoneInput}
                       setPhoneInput={setPhoneInput}
                       accentDot={accentDot}
+                      onEnter={handleSendOtpForNewPhone}
                     />
                   )}
 
-                  {screen === "delete-confirm" && <DeletePhoneView />}
+                  {screen === "delete-confirm" && <DeletePhoneView phone={currentPhone} />}
                 </motion.div>
               </AnimatePresence>
             </div>
@@ -442,11 +603,18 @@ function ModifyInner() {
 
             {screen === "new-phone" && (
               <>
+                {actionError && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
+                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
+                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
+                  </div>
+                )}
                 <button
-                  onClick={() => { setOtpCode(""); go("verify-otp-new", 1); }}
-                  className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all"
+                  onClick={handleSendOtpForNewPhone}
+                  disabled={isActionSubmitting}
+                  className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all disabled:opacity-60"
                 >
-                  Send verification code
+                  {isActionSubmitting ? "Sending…" : "Send verification code"}
                 </button>
                 <button
                   onClick={() => setShowBackWarning(true)}
@@ -459,11 +627,18 @@ function ModifyInner() {
 
             {screen === "verify-otp-new" && (
               <>
+                {actionError && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
+                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
+                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
+                  </div>
+                )}
                 <button
-                  onClick={() => setShowSuccessModal(true)}
-                  className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all"
+                  onClick={handleVerifyChangePhone}
+                  disabled={otpCode.length !== 6 || isActionSubmitting}
+                  className="w-full bg-[#192FFD] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all disabled:opacity-60"
                 >
-                  Verify
+                  {isActionSubmitting ? "Submitting…" : "Verify"}
                 </button>
                 <button
                   onClick={() => { setOtpCode(""); go("new-phone", -1); }}
@@ -476,11 +651,18 @@ function ModifyInner() {
 
             {screen === "delete-confirm" && (
               <>
+                {actionError && (
+                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
+                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
+                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
+                  </div>
+                )}
                 <button
-                  onClick={() => setShowSuccessModal(true)}
-                  className="w-full bg-[#FF4D4D] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all"
+                  onClick={handleDeletePhone}
+                  disabled={isActionSubmitting}
+                  className="w-full bg-[#FF4D4D] border-2 border-[#0B2818] text-white font-bold text-xl max-sm:text-lg py-4 max-sm:py-3.5 rounded-2xl shadow-[0px_4px_0px_0px_#0B2818] hover:translate-y-[2px] hover:shadow-[0px_2px_0px_0px_#0B2818] transition-all disabled:opacity-60"
                 >
-                  Yes, Delete Number
+                  {isActionSubmitting ? "Processing…" : "Yes, Delete Number"}
                 </button>
                 <button
                   onClick={() => setShowBackWarning(true)}
@@ -496,7 +678,7 @@ function ModifyInner() {
 
       <AppFooter />
 
-      <NumberUpdatedModal isOpen={showSuccessModal} onClose={resetFlow} action={action} />
+      <NumberUpdatedModal isOpen={showSuccessModal} onClose={resetFlow} action={action} newPhone={newPhone} />
 
       <LeaveFlowWarningModal
         isOpen={showBackWarning}
@@ -526,7 +708,7 @@ function ManageView({ accentDot, accentBox }: { accentDot: string; accentBox: st
       <div className={`flex flex-col items-center justify-center w-[280px] h-[100px] lg:w-100 lg:h-31 ${accentBox} rounded-2xl py-5 max-sm:py-4 px-6`}>
         <div className="flex flex-row w-full gap-2 justify-center">
             <Image alt="a phone icon" src="/phone-manage.svg" width={20} height={20}/>
-            <p className="text-2xl max-sm:text-xl font-bold text-[#0B2818] font-[outfit]">{PLACEHOLDER_PHONE}</p>
+            <p className="text-2xl max-sm:text-xl font-bold text-[#0B2818] font-[outfit]">Your registered number</p>
         </div>
         <p className="text-sm max-sm:text-xs text-gray-500 mt-1 font-[outfit]">Registered &amp; Verified</p>
       </div>
@@ -534,16 +716,88 @@ function ManageView({ accentDot, accentBox }: { accentDot: string; accentBox: st
   );
 }
 
-function VerifyIdentityView({ isDelete, accentBox, walletLabel }: { isDelete: boolean; accentBox: string; walletLabel: string | null }) {
+function VerifyIdentityView({
+  isDelete,
+  accentBox,
+  walletLabel,
+  currentPhone,
+  setCurrentPhone,
+  accentFocus,
+  verifyCountry,
+  setVerifyCountry,
+  isVerifyCountryOpen,
+  setIsVerifyCountryOpen,
+  onEnter,
+}: {
+  isDelete: boolean;
+  accentBox: string;
+  walletLabel: string | null;
+  currentPhone: string;
+  setCurrentPhone: (v: string) => void;
+  accentFocus: string;
+  verifyCountry: DialOption;
+  setVerifyCountry: (v: DialOption) => void;
+  isVerifyCountryOpen: boolean;
+  setIsVerifyCountryOpen: (v: boolean) => void;
+  onEnter: () => void;
+}) {
   return (
     <div className="flex flex-col items-center justify-center text-center h-full px-8 max-sm:px-2">
       <h1 className="font-jersey font-normal text-6xl max-sm:text-4xl max-sm:leading-[1.1] text-[#0B2818] mb-3 max-sm:mb-2">
         Verify your identity
       </h1>
-      <p className="text-gray-500 max-w-xl text-lg max-sm:text-sm mb-8 max-sm:mb-6">
-        For security, confirm a request in your connected wallet before you can{" "}
-        {isDelete ? "remove" : "change"} your phone number.
+      <p className="text-gray-500 max-w-xl text-lg max-sm:text-sm mb-6 max-sm:mb-4">
+        Enter your registered phone number, then confirm in your wallet before you can{" "}
+        {isDelete ? "remove" : "change"} it.
       </p>
+
+      {/* Phone input with country selector */}
+      <div className="w-full max-w-md mb-4 text-left relative">
+        <label className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-1.5 block font-[outfit]">
+          Your registered phone number
+        </label>
+        {isVerifyCountryOpen && (
+          <div className="fixed inset-0 z-40" onClick={() => setIsVerifyCountryOpen(false)} />
+        )}
+        <div className={`flex border-2 border-gray-200 ${accentFocus} rounded-2xl h-[52px] bg-white relative ${isVerifyCountryOpen ? "z-50" : "z-10"}`}>
+          <CountryCodeSelect
+            value={verifyCountry.code}
+            onChange={setVerifyCountry}
+            open={isVerifyCountryOpen}
+            onOpenChange={setIsVerifyCountryOpen}
+            className="relative shrink-0 flex"
+            triggerClassName="flex items-center justify-center h-full px-4 border-r-2 border-gray-200 bg-white font-[outfit] font-semibold text-base text-[#0B2818] hover:bg-gray-50 cursor-pointer rounded-l-2xl gap-1"
+            menuClassName="absolute z-[100] top-full mt-2 left-0 w-[200px] bg-white border-2 border-[#0B2818] rounded-xl shadow-lg flex flex-col overflow-hidden"
+            optionClassName={(active) =>
+              `w-full px-4 py-2.5 cursor-pointer transition-colors border-b border-gray-100 last:border-b-0 font-[outfit] font-semibold text-sm flex items-center justify-between gap-2 ${active ? "bg-[#B8FF4F] text-[#0B2818]" : "text-[#0B2818] hover:bg-[#B8FF4F]/50"}`
+            }
+            renderTrigger={(opt, open) => (
+              <>
+                <span className="text-sm font-bold text-[#0B2818]">{opt.code} {opt.dial}</span>
+                <svg className={`w-3 h-3 text-[#0B2818] transition-transform duration-200 ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 10 6">
+                  <path d="M1 1L5 5L9 1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </>
+            )}
+            renderOption={(opt) => (
+              <>
+                <span className="truncate text-sm">{opt.code} <span className="text-gray-500 font-normal">{opt.name}</span></span>
+                <span className="shrink-0 text-gray-500 text-xs">{opt.dial}</span>
+              </>
+            )}
+          />
+          <input
+            type="tel"
+            value={currentPhone}
+            onChange={(e) => setCurrentPhone(e.target.value)}
+            placeholder="Enter phone number"
+            className="flex-1 px-3 text-base font-medium font-[outfit] text-[#0B2818] focus:outline-none placeholder:text-gray-400 placeholder:font-normal bg-transparent rounded-r-2xl"
+            onFocus={() => setIsVerifyCountryOpen(false)}
+            onKeyDown={(e) => e.key === "Enter" && onEnter()}
+          />
+        </div>
+      </div>
+
       <div className={`flex items-center justify-center gap-3 w-full max-w-md ${accentBox} rounded-2xl py-5 max-sm:py-4 px-6 mb-4`}>
         <Image alt="wallet" src="/wallet.svg" width={22} height={22} className="max-sm:w-4 max-sm:h-4" />
         <div className="flex flex-col">
@@ -563,7 +817,7 @@ function VerifyIdentityView({ isDelete, accentBox, walletLabel }: { isDelete: bo
 }
 
 function NewPhoneView({
-  isDropdownOpen, setIsDropdownOpen, selectedCountry, setSelectedCountry, phoneInput, setPhoneInput, accentDot,
+  isDropdownOpen, setIsDropdownOpen, selectedCountry, setSelectedCountry, phoneInput, setPhoneInput, accentDot, onEnter,
 }: {
   isDropdownOpen: boolean;
   setIsDropdownOpen: (val: boolean) => void;
@@ -572,6 +826,7 @@ function NewPhoneView({
   phoneInput: string;
   setPhoneInput: (val: string) => void;
   accentDot: string;
+  onEnter: () => void;
 }) {
   return (
     <div className="flex flex-col h-full text-left px-8 max-sm:px-2 py-4 max-sm:py-0 max-sm:mt-5">
@@ -621,6 +876,7 @@ function NewPhoneView({
             onChange={(e) => setPhoneInput(e.target.value)}
             className="grow w-full px-4 max-sm:px-3 text-lg max-sm:text-xs outline-none bg-transparent rounded-r-2xl font-[outfit]"
             onFocus={() => setIsDropdownOpen(false)}
+            onKeyDown={(e) => e.key === "Enter" && onEnter()}
           />
         </div>
         <p className="text-xs max-sm:text-[10px] text-gray-400 mt-3 max-sm:mt-2 font-[outfit]">
@@ -631,7 +887,7 @@ function NewPhoneView({
   );
 }
 
-function DeletePhoneView() {
+function DeletePhoneView({ phone }: { phone: string }) {
   return (
     <div className="flex flex-col items-center justify-center text-center h-full px-8 max-sm:px-2">
       <h1 className="font-jersey font-normal text-5xl max-sm:text-3xl max-sm:leading-[1.1] text-[#0B2818] mb-3 max-sm:mb-2">
@@ -641,12 +897,12 @@ function DeletePhoneView() {
         Are you sure you want to remove your phone number? You won&apos;t be able to receive OTP-verified codes.
       </p>
       <div className="w-full max-w-md bg-[#FF4D4D]/10 rounded-2xl py-5 max-sm:py-4 px-6 mb-6 max-sm:mb-4">
-        <p className="text-2xl max-sm:text-xl font-bold text-[#0B2818] font-[outfit]">{PLACEHOLDER_PHONE}</p>
+        <p className="text-2xl max-sm:text-xl font-bold text-[#0B2818] font-[outfit]">{phone || "your registered number"}</p>
         <p className="text-sm max-sm:text-xs text-[#FF4D4D] font-semibold mt-1 font-[outfit]">Will be removed</p>
       </div>
       <div className="w-full max-w-md bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-left">
         <p className="text-xs max-sm:text-[11px] text-amber-700 font-[outfit]">
-          ⚠<span className="font-bold"> Warning:</span>You&apos;ll need to register a new number later to receive verified codes.
+          ⚠<span className="font-bold"> Warning:</span> You&apos;ll need to register a new number later to receive verified codes.
         </p>
       </div>
     </div>
@@ -661,6 +917,7 @@ function OtpView({
   accentDot,
   accentLink,
   accentFocus,
+  onSubmit,
 }: {
   step: 1 | 2;
   phone: string;
@@ -669,12 +926,16 @@ function OtpView({
   accentDot: string;
   accentLink: string;
   accentFocus: string;
+  onSubmit?: () => void;
 }) {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
     if (e.key === "Backspace" && !otpCode[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
+    }
+    if (e.key === "Enter" && otpCode.length === 6) {
+      onSubmit?.();
     }
   };
 
