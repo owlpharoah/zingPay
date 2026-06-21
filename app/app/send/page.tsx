@@ -13,6 +13,8 @@ import { PROGRAM_ID, BACKEND_URL, USDC_MINT } from "@/lib/constants"
 import { getDialOption } from "@/lib/phone"
 import { CountryCodeSelect } from "@/components/CountryCodeSelect"
 import { CurrencySelect } from "@/components/CurrencySelect"
+import ErrorModal from "@/components/ErrorModal"
+import { toFriendlyError } from "@/lib/errors"
 import * as anchor from "@coral-xyz/anchor"
 
 const ESCROW_EXPIRY_SECONDS = 72 * 3600
@@ -23,8 +25,20 @@ const STABLECOINS: Record<string, string> = {
   USDC: "usd-coin",
 }
 
-// Currencies always pinned to the top of the dropdown, in this order.
+// Currencies always pinned to the top of the dropdown, in this order. These are
+// the only crypto tokens we support sending; everything else in the dropdown is
+// a fiat currency used purely to quote an equivalent SOL amount.
 const PINNED_CURRENCIES = ["SOL", "USDC"]
+
+// CoinGecko's `supported_vs_currencies` list mixes fiat currencies with a handful
+// of crypto tokens (BTC, ETH, …). We only ever transact in SOL/USDC, so these
+// crypto codes are stripped from the live list — leaving fiat (plus the pinned
+// SOL/USDC) only. Kept as a denylist so newly added fiat currencies still pass
+// through automatically.
+const CRYPTO_VS_CURRENCIES = new Set([
+  "BTC", "ETH", "LTC", "BCH", "BNB", "EOS", "XRP", "XLM",
+  "LINK", "DOT", "YFI", "SOL", "USDC", "BITS", "SATS",
+])
 
 // Shown until the live CoinGecko currency list loads (or if it fails).
 const FALLBACK_CURRENCIES = [...PINNED_CURRENCIES, "USD", "INR", "EUR", "GBP", "JPY", "AED", "SGD"]
@@ -59,6 +73,10 @@ export default function Send() {
   // Transaction State
   const [status, setStatus] = useState<"idle" | "sending" | "success" | "partial_success" | "error">("idle")
   const [message, setMessage] = useState("")
+  // Headline for the error modal. Validation errors leave this empty (a generic
+  // "Check your details" heading is used); transaction failures set a specific
+  // mapped title via toFriendlyError.
+  const [errorTitle, setErrorTitle] = useState("")
   const [txSig, setTxSig] = useState("")
   const [pendingEscrow, setPendingEscrow] = useState<PendingEscrow | null>(null)
   const [isResending, setIsResending] = useState(false)
@@ -82,10 +100,11 @@ export default function Send() {
         const resp = await fetch("https://api.coingecko.com/api/v3/simple/supported_vs_currencies")
         const data = await resp.json()
         if (!Array.isArray(data)) throw new Error("Bad list")
-        const pinned = PINNED_CURRENCIES.map((c) => c.toUpperCase())
         const rest = data
           .map((c: string) => c.toUpperCase())
-          .filter((c: string) => !pinned.includes(c))
+          // Drop crypto tokens (incl. the pinned SOL/USDC, re-added below) so
+          // only fiat currencies remain in the live list.
+          .filter((c: string) => !CRYPTO_VS_CURRENCIES.has(c))
           .sort()
         if (!cancelled) setCurrencies([...PINNED_CURRENCIES, ...rest])
       } catch {
@@ -227,6 +246,7 @@ export default function Send() {
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault()
+    setErrorTitle("")
 
     if (!publicKey) {
       setMessage("Connect your wallet first")
@@ -522,7 +542,9 @@ export default function Send() {
       }
     } catch (err: any) {
       console.error("Send failed:", err)
-      setMessage(err.message || "Transaction failed")
+      const friendly = toFriendlyError(err, { title: "Couldn't send" })
+      setErrorTitle(friendly.title)
+      setMessage(friendly.hint)
       setStatus("error")
     }
   }
@@ -688,13 +710,9 @@ export default function Send() {
           </form>
         </div>
 
-        {/* Status Messages */}
-        {message && status !== "success" && (
-          <div className={`mt-6 rounded-2xl border-2 p-4 text-sm font-medium font-[outfit] ${
-            status === "error"
-              ? "border-red-300 bg-red-50 text-red-700"
-              : "border-yellow-300 bg-yellow-50 text-yellow-800"
-          }`}>
+        {/* Warning Messages (partial success) — hard errors use the modal below */}
+        {message && status === "partial_success" && (
+          <div className="mt-6 rounded-2xl border-2 p-4 text-sm font-medium font-[outfit] border-yellow-300 bg-yellow-50 text-yellow-800">
             {message}
           </div>
         )}
@@ -813,6 +831,14 @@ export default function Send() {
           </div>
         </div>
       )}
+
+      {/* --- ERROR MODAL --- */}
+      <ErrorModal
+        isOpen={status === "error"}
+        onClose={() => setStatus("idle")}
+        title={errorTitle || "Check your details"}
+        message={message}
+      />
 
     </div>
   )

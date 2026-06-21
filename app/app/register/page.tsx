@@ -11,6 +11,8 @@ import { Transaction } from "@solana/web3.js";
 import { BACKEND_URL } from "@/lib/constants";
 import { normalizeToE164, getDialOption, DialOption } from "@/lib/phone";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
+import ErrorModal from "@/components/ErrorModal";
+import { toFriendlyError } from "@/lib/errors";
 
 // --- Types ---
 type Step = 0 | 1 | 2;
@@ -125,6 +127,9 @@ export default function Register() {
   const [registerState, setRegisterState] = useState<RegisterState>("idle");
   const [phoneE164, setPhoneE164] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+  // Headline for the error modal. Empty for plain validation messages (a generic
+  // heading is used); set to a mapped title on transaction/network failures.
+  const [errorTitle, setErrorTitle] = useState("");
   const [txSig, setTxSig] = useState("");
 
   const nextStep = () => {
@@ -144,6 +149,7 @@ export default function Register() {
   };
 
   async function handleSendOtp() {
+    setErrorTitle("");
     if (!publicKey) {
       setErrorMessage("Connect your wallet first");
       setRegisterState("error");
@@ -173,12 +179,15 @@ export default function Register() {
       setRegisterState("otp_sent");
       nextStep();
     } catch (err: any) {
-      setErrorMessage(err.message);
+      const friendly = toFriendlyError(err, { title: "Couldn't send code" });
+      setErrorTitle(friendly.title);
+      setErrorMessage(friendly.hint);
       setRegisterState("error");
     }
   }
 
   async function handleVerifyAndRegister() {
+    setErrorTitle("");
     if (!publicKey || !signTransaction) {
       setErrorMessage("Connect your wallet first");
       setRegisterState("error");
@@ -220,13 +229,16 @@ export default function Register() {
       setShowSuccessModal(true);
     } catch (err: any) {
       console.error("Register failed:", err);
-      setErrorMessage(err.message || "Registration failed");
+      const friendly = toFriendlyError(err, { title: "Registration failed" });
+      setErrorTitle(friendly.title);
+      setErrorMessage(friendly.hint);
       setRegisterState("error");
     }
   }
 
   async function handleResendOtp() {
     if (!phoneE164) return;
+    setErrorTitle("");
     setRegisterState("sending_otp");
     try {
       const resp = await fetch(`${BACKEND_URL}/otp/send-register`, {
@@ -238,7 +250,9 @@ export default function Register() {
       if (!resp.ok) throw new Error(data.error || "Failed to resend OTP");
       setRegisterState("otp_sent");
     } catch (err: any) {
-      setErrorMessage(err.message);
+      const friendly = toFriendlyError(err, { title: "Couldn't resend code" });
+      setErrorTitle(friendly.title);
+      setErrorMessage(friendly.hint);
       setRegisterState("error");
     }
   }
@@ -301,11 +315,6 @@ export default function Register() {
               </AnimatePresence>
             </div>
 
-            {errorMessage && registerState === "error" && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-sm text-red-700 font-[outfit] z-10 relative">
-                {errorMessage}
-              </div>
-            )}
           </div>
 
           {/* Action Buttons */}
@@ -362,6 +371,13 @@ export default function Register() {
       <AppFooter />
 
       <WalletCreatedModal isOpen={showSuccessModal} onClose={() => setShowSuccessModal(false)} txSig={txSig} />
+
+      <ErrorModal
+        isOpen={registerState === "error"}
+        onClose={() => setRegisterState("idle")}
+        title={errorTitle || "Check your details"}
+        message={errorMessage}
+      />
     </div>
   );
 }

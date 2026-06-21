@@ -15,6 +15,8 @@ import { useRegistration, isLocalhost } from "@/lib/useRegistration";
 import { WalletDropdown } from "@/components/WalletDropdown";
 import { hashPhone, toHex } from "@/lib/hash";
 import { BACKEND_URL } from "@/lib/constants";
+import ErrorModal from "@/components/ErrorModal";
+import { toFriendlyError, type FriendlyError } from "@/lib/errors";
 
 // --- Types ---
 type Action = "change" | "delete";
@@ -231,45 +233,9 @@ function ModifyGuard({ loading }: { loading: boolean }) {
   );
 }
 
-type ActionErrorInfo = {
-  title: string;
-  hint: string;
-};
-
-function parseActionError(err: any): ActionErrorInfo {
-  const logs: string[] | undefined =
-    err?.logs ?? err?.error?.logs ?? err?.transactionError?.logs;
-  const msg = String(err?.message ?? err?.toString?.() ?? "");
-
-  const inMsg = (s: string) => msg.includes(s);
-  const inLogs = (s: string) => logs?.some((l) => l.includes(s)) ?? false;
-
-  if (inMsg("User rejected") || inMsg("rejected the request") || inMsg("WalletSignTransaction"))
-    return { title: "Transaction cancelled", hint: "You declined the request in your wallet. Try again when ready." };
-
-  if (inMsg("AccountNotInitialized") || inLogs("AccountNotInitialized"))
-    return {
-      title: "Phone not found on-chain",
-      hint: "No registration exists for the number you entered. Check that you typed your number correctly and that you've completed the registration flow.",
-    };
-
-  if (inMsg("Unauthorized") || inLogs("Unauthorized") || inMsg("0x1770") || inLogs("0x1770"))
-    return {
-      title: "Wallet doesn't own this registration",
-      hint: "The connected wallet is not the owner of this phone registration. Make sure you're using the same wallet you registered with.",
-    };
-
-  if (inMsg("ConstraintSeeds") || inLogs("ConstraintSeeds") || inMsg("ConstraintRaw") || inLogs("ConstraintRaw"))
-    return {
-      title: "Phone number mismatch",
-      hint: "The phone number you entered doesn't match your on-chain registration. Enter the exact number you registered.",
-    };
-
-  if (inMsg("InsufficientFunds") || inMsg("insufficient lamports"))
-    return { title: "Insufficient SOL", hint: "Your wallet doesn't have enough SOL to pay the transaction fee." };
-
-  return { title: "Transaction failed", hint: msg || "An unexpected error occurred. Check the browser console for details." };
-}
+// Friendly error copy is centralised in lib/errors. Local alias kept for the
+// existing call sites below.
+type ActionErrorInfo = FriendlyError;
 
 function ModifyInner() {
   const [screen, setScreen] = useState<Screen>("manage");
@@ -402,7 +368,7 @@ function ModifyInner() {
       await connection.confirmTransaction(sig, "confirmed");
       setShowSuccessModal(true);
     } catch (err: any) {
-      setActionError(parseActionError(err));
+      setActionError(toFriendlyError(err));
     } finally {
       setIsActionSubmitting(false);
     }
@@ -462,7 +428,7 @@ function ModifyInner() {
       await connection.confirmTransaction(sig, "confirmed");
       setShowSuccessModal(true);
     } catch (err: any) {
-      setActionError(parseActionError(err));
+      setActionError(toFriendlyError(err));
     } finally {
       setIsActionSubmitting(false);
     }
@@ -603,12 +569,6 @@ function ModifyInner() {
 
             {screen === "new-phone" && (
               <>
-                {actionError && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
-                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
-                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
-                  </div>
-                )}
                 <button
                   onClick={handleSendOtpForNewPhone}
                   disabled={isActionSubmitting}
@@ -627,12 +587,6 @@ function ModifyInner() {
 
             {screen === "verify-otp-new" && (
               <>
-                {actionError && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
-                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
-                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
-                  </div>
-                )}
                 <button
                   onClick={handleVerifyChangePhone}
                   disabled={otpCode.length !== 6 || isActionSubmitting}
@@ -651,12 +605,6 @@ function ModifyInner() {
 
             {screen === "delete-confirm" && (
               <>
-                {actionError && (
-                  <div className="bg-red-50 border-2 border-red-200 rounded-2xl px-4 py-3 -mb-1">
-                    <p className="text-red-700 text-sm font-bold font-[outfit]">{actionError.title}</p>
-                    <p className="text-red-500 text-xs font-[outfit] mt-0.5">{actionError.hint}</p>
-                  </div>
-                )}
                 <button
                   onClick={handleDeletePhone}
                   disabled={isActionSubmitting}
@@ -685,6 +633,13 @@ function ModifyInner() {
         isDelete={isDelete}
         onConfirm={confirmLeaveFlow}
         onCancel={() => setShowBackWarning(false)}
+      />
+
+      <ErrorModal
+        isOpen={!!actionError}
+        onClose={() => setActionError(null)}
+        title={actionError?.title}
+        message={actionError?.hint}
       />
     </div>
   );

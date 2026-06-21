@@ -17,6 +17,8 @@ import { downloadSecretKey, generateClaimKeypair } from "@/lib/walletless";
 import { normalizeToE164, getDialOption, DialOption } from "@/lib/phone";
 import { CountryCodeSelect } from "@/components/CountryCodeSelect";
 import { WalletDropdown } from "@/components/WalletDropdown";
+import ErrorModal from "@/components/ErrorModal";
+import { toFriendlyError } from "@/lib/errors";
 
 // Country selector styled to match the claim page's inputs. Used in both the
 // inline OTP prompt and the detail view.
@@ -107,6 +109,8 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
   const [phoneInput, setPhoneInput] = useState("");
   const [otpCode, setOtpCode] = useState("");
   const [message, setMessage] = useState("");
+  // Headline for the error modal, set alongside `message` on every error path.
+  const [errorTitle, setErrorTitle] = useState("");
   const [txSig, setTxSig] = useState("");
 
   const claimantWallet = claimMode === "generated" ? generatedKeypair?.publicKey ?? null : publicKey;
@@ -163,7 +167,12 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
 
       setState("choose_mode");
     } catch (err: any) {
-      setMessage("Failed to load escrow: " + err.message);
+      const friendly = toFriendlyError(err, {
+        title: "Couldn't load this transfer",
+        hint: "We couldn't load this payment link. It may be invalid, expired, or already claimed.",
+      });
+      setErrorTitle(friendly.title);
+      setMessage(friendly.hint);
       setState("error");
     }
   }
@@ -208,7 +217,9 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
       if (!resp.ok) throw new Error(data.error || "Failed to send OTP");
       setState("otp_input");
     } catch (err: any) {
-      setMessage(err.message);
+      const friendly = toFriendlyError(err, { title: "Couldn't send code" });
+      setErrorTitle(friendly.title);
+      setMessage(friendly.hint);
       setState("error");
     }
   }
@@ -217,7 +228,8 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
     if (!claimantWallet || !otpCode || !claimMode) return;
     if (claimMode === "generated" && !generatedKeypair) return;
     if (claimMode === "generated" && !keyDownloaded) {
-      setMessage("Please download and safely store your keypair before claiming.");
+      setErrorTitle("Back up your key first");
+      setMessage("Download and safely store your keypair before claiming — it's the only way to access these funds.");
       setState("error");
       return;
     }
@@ -274,14 +286,9 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
         const logs = await err.getLogs(connection).catch(() => null);
         if (logs?.length) console.error("Claim simulation logs:", logs);
       }
-      const raw = String(err?.message || "Claim failed");
-      if (raw.includes("unknown signer") || raw.includes("signature verification")) {
-        setMessage("Signer mismatch. Reconnect wallet and try again.");
-      } else if (raw.includes("Attempt to debit an account but found no record")) {
-        setMessage("Gas sponsor wallet is missing or unfunded. Please contact support.");
-      } else {
-        setMessage(raw);
-      }
+      const friendly = toFriendlyError(err, { title: "Claim failed" });
+      setErrorTitle(friendly.title);
+      setMessage(friendly.hint);
       setState("error");
     }
   }
@@ -415,14 +422,13 @@ function DirectClaimFlow({ escrowAddress, claimPhone }: { escrowAddress: string;
         )}
 
         {/* Error */}
-        {state === "error" && message && (
-          <div className="mt-6 space-y-3">
-            <div className="bg-red-50 border border-red-200 rounded-2xl p-4 text-sm text-red-700">{message}</div>
-            <button onClick={() => { setMessage(""); setState(claimMode === "generated" ? "otp_prompt" : publicKey ? "otp_prompt" : "connect_wallet"); }} className="w-full bg-white border-2 border-[#0B2818] text-[#0B2818] font-bold py-3 rounded-xl text-sm">
-              Try again
-            </button>
-          </div>
-        )}
+        <ErrorModal
+          isOpen={state === "error"}
+          onClose={() => { setMessage(""); setState(claimMode === "generated" ? "otp_prompt" : publicKey ? "otp_prompt" : "connect_wallet"); }}
+          dismissLabel="Try again"
+          title={errorTitle || "Something went wrong"}
+          message={message}
+        />
 
         {/* Info cards */}
         {state !== "loading" && state !== "already_claimed" && state !== "success" && (

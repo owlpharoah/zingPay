@@ -15,9 +15,10 @@ import {
 } from "@solana/spl-token";
 import * as anchor from "@coral-xyz/anchor";
 import twilio from "twilio";
-import fs from "fs";
-import path from "path";
 import crypto from "crypto";
+// Imported (not read from disk) so the IDL is bundled into the serverless
+// function — no reliance on __dirname / the runtime filesystem layout.
+import idlJson from "../idl/solpay.json";
 
 dotenv.config();
 
@@ -113,32 +114,26 @@ const ATA_SIZE = 165;
 
 const connection = new Connection(RPC_URL, "confirmed");
 
-const idlPath = path.join(__dirname, "..", "idl", "solpay.json");
-let idl: any;
-try {
-  idl = JSON.parse(fs.readFileSync(idlPath, "utf-8"));
-} catch {
-  console.warn("IDL not found at", idlPath, "— some features will fail.");
-}
+const idl = idlJson as anchor.Idl;
 
 const wallet = new anchor.Wallet(claimAuthority);
 const provider = new anchor.AnchorProvider(connection, wallet, {
   commitment: "confirmed",
 });
-let program: anchor.Program;
-if (idl) {
-  program = new anchor.Program(idl, provider);
-}
+const program = new anchor.Program(idl, provider);
 
 // ============================================================
 // In-memory state
 // ============================================================
 
-// phone_hash (hex) → { phone, escrow_address }
-const notifyMap = new Map<string, { phone: string; escrow: string }>();
-// escrow_address → phone
+// escrow_address → phone. Best-effort warm cache only: on a cold serverless
+// invocation this starts empty, and resolvePhoneForEscrow falls back to the
+// phone carried in the claim link (verified against the on-chain phone hash).
 const escrowMap = new Map<string, string>();
-// rate limiting: key → { count, resetAt }
+// rate limiting: key → { count, resetAt }.
+// NOTE: in-memory, so on Vercel this is per-instance and resets on cold starts —
+// effective but not a strict global limit. For a hard cross-instance cap, back
+// this with a shared store (e.g. Upstash Redis / Vercel KV).
 const otpRateLimit = new Map<string, { count: number; resetAt: number }>();
 
 function checkRateLimit(key: string): boolean {
@@ -340,15 +335,7 @@ app.post("/notify", async (req, res) => {
       return res.status(400).json({ error: "Invalid escrow address" });
     }
 
-    notifyMap.set(phone_hash, { phone, escrow: escrow_address });
     escrowMap.set(escrow_address, phone);
-    setTimeout(
-      () => {
-        notifyMap.delete(phone_hash);
-        escrowMap.delete(escrow_address);
-      },
-      73 * 3600 * 1000,
-    );
 
     const claimUrl = `${APP_URL}/claim?escrow=${escrow_address}&phone=${encodeURIComponent(phone)}`;
     const to = normalizePhoneForTwilio(phone);
@@ -1004,15 +991,24 @@ app.post("/phone/build-delete-tx", async (req, res) => {
 // Refund cron — every hour, refunds expired native and token escrows
 // ============================================================
 
-async function runRefundCron() {
+async function runRefundCron(): Promise<{
+  checked: number;
+  refunded: number;
+  capped: boolean;
+}> {
   if (!program) {
     console.warn("[refund-cron] Program not initialized, skipping");
-    return;
+    return { checked: 0, refunded: 0, capped: false };
   }
 
+  // Bound the number of refund transactions per run so a large backlog can't
+  // blow the serverless function's time limit. The cron runs hourly, so any
+  // remainder is cleared on subsequent runs. Tunable via REFUND_CRON_MAX.
+  const maxPerRun = parseInt(process.env.REFUND_CRON_MAX || "15", 10);
   const now = Math.floor(Date.now() / 1000);
   let refunded = 0;
   let checked = 0;
+  let capped = false;
 
   // Native escrows
   try {
@@ -1022,6 +1018,7 @@ async function runRefundCron() {
     checked += nativeAccounts.length;
 
     for (const { pubkey, account } of nativeAccounts) {
+      if (refunded >= maxPerRun) { capped = true; break; }
       try {
         const escrow = program.coder.accounts.decode("escrowAccount", account.data);
         if (now > (escrow.createdAt as anchor.BN).toNumber() + 72 * 3600) {
@@ -1053,6 +1050,7 @@ async function runRefundCron() {
     checked += tokenAccounts.length;
 
     for (const { pubkey, account } of tokenAccounts) {
+      if (refunded >= maxPerRun) { capped = true; break; }
       try {
         const parsed = parseTokenEscrow(account.data);
         if (now > Number(parsed.createdAt) + 72 * 3600) {
@@ -1085,21 +1083,66 @@ async function runRefundCron() {
     console.error("[refund-cron] Token scan error:", err.message);
   }
 
-  console.log(`[refund-cron] Checked ${checked} escrows, refunded ${refunded}`);
+  console.log(
+    `[refund-cron] Checked ${checked} escrows, refunded ${refunded}${capped ? " (capped — backlog remains for next run)" : ""}`,
+  );
+  return { checked, refunded, capped };
 }
 
 // ============================================================
-// Start server
+// GET/POST /cron/refund
+//
+// Serverless entrypoint for the refund sweep. On Vercel the sweep can't run as
+// an in-process interval (functions are ephemeral), so a Vercel Cron (see
+// vercel.json) hits this endpoint on a schedule. Guarded by CRON_SECRET —
+// Vercel attaches `Authorization: Bearer <CRON_SECRET>` to cron requests when
+// the env var is set.
 // ============================================================
 
-app.listen(PORT, () => {
-  console.log(`SolPay server running on port ${PORT}`);
-  console.log(`Program ID: ${PROGRAM_ID}`);
-  console.log(`Claim authority: ${claimAuthority.publicKey}`);
-  console.log(`Frontend URL: ${APP_URL}`);
+async function handleRefundCron(req: express.Request, res: express.Response) {
+  const secret = process.env.CRON_SECRET;
+  if (secret) {
+    if (req.headers.authorization !== `Bearer ${secret}`) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+  } else {
+    console.warn(
+      "[cron/refund] CRON_SECRET is not set — the refund endpoint is publicly callable. Set CRON_SECRET to lock it down.",
+    );
+  }
 
-  setTimeout(() => {
-    runRefundCron();
-    setInterval(runRefundCron, 60 * 60 * 1000);
-  }, 60 * 1000);
-});
+  try {
+    const result = await runRefundCron();
+    res.json({ ok: true, ...result });
+  } catch (err: any) {
+    console.error("[cron/refund] Error:", err?.message);
+    res.status(500).json({ error: err?.message || "Refund cron failed" });
+  }
+}
+
+app.get("/cron/refund", handleRefundCron);
+app.post("/cron/refund", handleRefundCron);
+
+// ============================================================
+// Start server
+//
+// Local dev only: run as a long-lived process with an in-process refund loop.
+// On Vercel (VERCEL=1) this module is imported by api/index.ts and exported as
+// the request handler; the refund loop is replaced by the Vercel Cron above.
+// ============================================================
+
+if (!process.env.VERCEL) {
+  app.listen(PORT, () => {
+    console.log(`SolPay server running on port ${PORT}`);
+    console.log(`Program ID: ${PROGRAM_ID}`);
+    console.log(`Claim authority: ${claimAuthority.publicKey}`);
+    console.log(`Frontend URL: ${APP_URL}`);
+
+    setTimeout(() => {
+      runRefundCron();
+      setInterval(runRefundCron, 60 * 60 * 1000);
+    }, 60 * 1000);
+  });
+}
+
+export default app;
