@@ -36,10 +36,12 @@ const USDC_MINT = new PublicKey(
 );
 // Provider's USDC token account (receives swap fee carve-out)
 const PROVIDER_USDC_ATA = new PublicKey(
-  process.env.PROVIDER_USDC_ATA || "DbQYAzzdGajKZPJV4brtGy6d9UWbDEUjpDTeWyxCKrtg",
+  process.env.PROVIDER_USDC_ATA ||
+    "DbQYAzzdGajKZPJV4brtGy6d9UWbDEUjpDTeWyxCKrtg",
 );
-const APP_URL = process.env.APP_URL || "http://localhost:3000";
-const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || "http://localhost:3000";
+const APP_URL = process.env.APP_URL || "https://zing-pay.vercel.app/";
+const ALLOWED_ORIGIN =
+  process.env.ALLOWED_ORIGIN || "https://zing-pay.vercel.app/";
 const EXPECTED_CLAIM_AUTHORITY = new PublicKey(
   process.env.EXPECTED_CLAIM_AUTHORITY ||
     "5JWiQfGELyHtntzkiDgs57PGTHgAFQ3D5ia5S6RdJjpz",
@@ -92,10 +94,12 @@ function twilioErrorMessage(err: any, fallback: string): string {
   const code = err?.code ? ` [Twilio ${err.code}]` : "";
   const detail = err?.message ? ` ${err.message}` : "";
   let hint = "";
-  if (err?.code === 21608) hint = " (Trial: must be a verified recipient number.)";
+  if (err?.code === 21608)
+    hint = " (Trial: must be a verified recipient number.)";
   else if (err?.code === 21211) hint = " (Phone must be in E.164 format.)";
   else if (err?.code === 60200 || err?.code === 60203)
-    hint = " (Verify service or destination not allowed for this account/region.)";
+    hint =
+      " (Verify service or destination not allowed for this account/region.)";
   return `${fallback}${code}.${detail}${hint}`.trim();
 }
 
@@ -103,8 +107,8 @@ function twilioErrorMessage(err: any, fallback: string): string {
 // Account size constants
 // ============================================================
 
-const ESCROW_NATIVE_SIZE = 89;    // 8+32+32+8+8+1
-const ESCROW_TOKEN_SIZE = 121;    // 8+32+32+8+8+32+1
+const ESCROW_NATIVE_SIZE = 89; // 8+32+32+8+8+1
+const ESCROW_TOKEN_SIZE = 121; // 8+32+32+8+8+32+1
 const REGISTRY_ACCOUNT_SIZE = 73; // 8+32+32+1
 const ATA_SIZE = 165;
 
@@ -187,7 +191,9 @@ async function fetchTx4Fee(): Promise<bigint> {
       lamports: 0,
     }),
   );
-  const feeResponse = await connection.getFeeForMessage(testTx.compileMessage());
+  const feeResponse = await connection.getFeeForMessage(
+    testTx.compileMessage(),
+  );
   const baseFee = BigInt(feeResponse.value ?? 5000);
   return (baseFee * 120n) / 100n;
 }
@@ -262,7 +268,10 @@ async function resolvePhoneForEscrow(
     if (!accountInfo) return null;
     const data = accountInfo.data;
     let onChainPhoneHash: Buffer;
-    if (data.length === ESCROW_NATIVE_SIZE || data.length === ESCROW_TOKEN_SIZE) {
+    if (
+      data.length === ESCROW_NATIVE_SIZE ||
+      data.length === ESCROW_TOKEN_SIZE
+    ) {
       onChainPhoneHash = Buffer.from(data.subarray(40, 72));
     } else {
       return null;
@@ -314,7 +323,8 @@ app.get("/health", async (_req, res) => {
 app.post("/notify", async (req, res) => {
   try {
     const { client, from } = getNotifyConfig();
-    const { phone, phone_hash, escrow_address, token, symbol, amount_ui } = req.body;
+    const { phone, phone_hash, escrow_address, token, symbol, amount_ui } =
+      req.body;
 
     if (!phone || !phone_hash || !escrow_address) {
       return res
@@ -464,7 +474,9 @@ app.post("/otp/verify", async (req, res) => {
     const claimantPubkey = new PublicKey(claimant_wallet);
     const accountInfo = await connection.getAccountInfo(escrowPubkey);
     if (!accountInfo) {
-      return res.status(404).json({ error: "Escrow account not found on-chain" });
+      return res
+        .status(404)
+        .json({ error: "Escrow account not found on-chain" });
     }
 
     const { blockhash } = await connection.getLatestBlockhash();
@@ -534,7 +546,9 @@ app.post("/otp/verify", async (req, res) => {
         await connection.getMinimumBalanceForRentExemption(ATA_SIZE),
       );
       const rentExemptRegistry = BigInt(
-        await connection.getMinimumBalanceForRentExemption(REGISTRY_ACCOUNT_SIZE),
+        await connection.getMinimumBalanceForRentExemption(
+          REGISTRY_ACCOUNT_SIZE,
+        ),
       );
       const rentExemptWallet = BigInt(
         await connection.getMinimumBalanceForRentExemption(0),
@@ -542,7 +556,11 @@ app.post("/otp/verify", async (req, res) => {
       const totalSolRecovery =
         rentExemptAta + rentExemptRegistry + rentExemptWallet + tx4Fee * 2n;
 
-      const swapAmountTokens = calculateSwapTokens(totalSolRecovery, price, expo);
+      const swapAmountTokens = calculateSwapTokens(
+        totalSolRecovery,
+        price,
+        expo,
+      );
 
       if (parsed.amount <= swapAmountTokens) {
         return res.status(400).json({
@@ -700,12 +718,18 @@ app.post("/otp/verify-register", async (req, res) => {
     }
 
     const walletPubkey = new PublicKey(wallet);
-    const phoneHash = crypto.createHash("sha256").update(phone, "utf8").digest();
+    const phoneHash = crypto
+      .createHash("sha256")
+      .update(phone, "utf8")
+      .digest();
     const phoneHashArray = Array.from(phoneHash);
     const registryPda = getRegistryPda(new Uint8Array(phoneHash));
 
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = new Transaction({ recentBlockhash: blockhash, feePayer: walletPubkey });
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer: walletPubkey,
+    });
     tx.add(
       await program.methods
         .registerPhone(phoneHashArray, walletPubkey)
@@ -721,7 +745,9 @@ app.post("/otp/verify-register", async (req, res) => {
 
     console.log(`[otp/verify-register] Register tx built for ${phone}`);
     res.json({
-      transaction: tx.serialize({ requireAllSignatures: false }).toString("base64"),
+      transaction: tx
+        .serialize({ requireAllSignatures: false })
+        .toString("base64"),
     });
   } catch (err: any) {
     console.error("[otp/verify-register] Error:", err.message);
@@ -752,7 +778,9 @@ app.post("/otp/verify-change", async (req, res) => {
     if (!old_phone_hash_hex || !new_phone || !code || !wallet) {
       return res
         .status(400)
-        .json({ error: "Missing old_phone_hash_hex, new_phone, code, or wallet" });
+        .json({
+          error: "Missing old_phone_hash_hex, new_phone, code, or wallet",
+        });
     }
 
     const check = await twilioClient.verify.v2
@@ -771,7 +799,9 @@ app.post("/otp/verify-change", async (req, res) => {
     }
 
     const walletPubkey = new PublicKey(wallet);
-    const oldPhoneHash = Uint8Array.from(Buffer.from(old_phone_hash_hex, "hex"));
+    const oldPhoneHash = Uint8Array.from(
+      Buffer.from(old_phone_hash_hex, "hex"),
+    );
     const oldRegistryPda = getRegistryPda(oldPhoneHash);
 
     const newPhoneHash = crypto
@@ -781,7 +811,10 @@ app.post("/otp/verify-change", async (req, res) => {
     const newRegistryPda = getRegistryPda(new Uint8Array(newPhoneHash));
 
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = new Transaction({ recentBlockhash: blockhash, feePayer: walletPubkey });
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer: walletPubkey,
+    });
 
     // delete_phone: only owner signs (no claimAuthority)
     tx.add(
@@ -810,9 +843,13 @@ app.post("/otp/verify-change", async (req, res) => {
 
     tx.partialSign(claimAuthority);
 
-    console.log(`[otp/verify-change] Change phone tx built for wallet ${wallet}`);
+    console.log(
+      `[otp/verify-change] Change phone tx built for wallet ${wallet}`,
+    );
     res.json({
-      transaction: tx.serialize({ requireAllSignatures: false }).toString("base64"),
+      transaction: tx
+        .serialize({ requireAllSignatures: false })
+        .toString("base64"),
     });
   } catch (err: any) {
     console.error("[otp/verify-change] Error:", err.message);
@@ -893,13 +930,17 @@ app.post("/received/lookup", async (req, res) => {
       connection.getProgramAccounts(PROGRAM_ID, {
         filters: [
           { dataSize: ESCROW_NATIVE_SIZE },
-          { memcmp: { offset: 40, bytes: phoneHashEncoded, encoding: "base58" } },
+          {
+            memcmp: { offset: 40, bytes: phoneHashEncoded, encoding: "base58" },
+          },
         ],
       }),
       connection.getProgramAccounts(PROGRAM_ID, {
         filters: [
           { dataSize: ESCROW_TOKEN_SIZE },
-          { memcmp: { offset: 40, bytes: phoneHashEncoded, encoding: "base58" } },
+          {
+            memcmp: { offset: 40, bytes: phoneHashEncoded, encoding: "base58" },
+          },
         ],
       }),
     ]);
@@ -953,7 +994,9 @@ app.post("/phone/build-delete-tx", async (req, res) => {
   try {
     const { phone_hash_hex, wallet } = req.body;
     if (!phone_hash_hex || !wallet) {
-      return res.status(400).json({ error: "Missing phone_hash_hex or wallet" });
+      return res
+        .status(400)
+        .json({ error: "Missing phone_hash_hex or wallet" });
     }
 
     if (!program) {
@@ -965,7 +1008,10 @@ app.post("/phone/build-delete-tx", async (req, res) => {
     const registryPda = getRegistryPda(phoneHash);
 
     const { blockhash } = await connection.getLatestBlockhash();
-    const tx = new Transaction({ recentBlockhash: blockhash, feePayer: walletPubkey });
+    const tx = new Transaction({
+      recentBlockhash: blockhash,
+      feePayer: walletPubkey,
+    });
     tx.add(
       await program.methods
         .deletePhone(Array.from(phoneHash))
@@ -979,7 +1025,9 @@ app.post("/phone/build-delete-tx", async (req, res) => {
 
     console.log(`[phone/build-delete-tx] Delete tx built for wallet ${wallet}`);
     res.json({
-      transaction: tx.serialize({ requireAllSignatures: false }).toString("base64"),
+      transaction: tx
+        .serialize({ requireAllSignatures: false })
+        .toString("base64"),
     });
   } catch (err: any) {
     console.error("[phone/build-delete-tx] Error:", err.message);
@@ -1018,9 +1066,15 @@ async function runRefundCron(): Promise<{
     checked += nativeAccounts.length;
 
     for (const { pubkey, account } of nativeAccounts) {
-      if (refunded >= maxPerRun) { capped = true; break; }
+      if (refunded >= maxPerRun) {
+        capped = true;
+        break;
+      }
       try {
-        const escrow = program.coder.accounts.decode("escrowAccount", account.data);
+        const escrow = program.coder.accounts.decode(
+          "escrowAccount",
+          account.data,
+        );
         if (now > (escrow.createdAt as anchor.BN).toNumber() + 72 * 3600) {
           await program.methods
             .refundEscrow()
@@ -1050,7 +1104,10 @@ async function runRefundCron(): Promise<{
     checked += tokenAccounts.length;
 
     for (const { pubkey, account } of tokenAccounts) {
-      if (refunded >= maxPerRun) { capped = true; break; }
+      if (refunded >= maxPerRun) {
+        capped = true;
+        break;
+      }
       try {
         const parsed = parseTokenEscrow(account.data);
         if (now > Number(parsed.createdAt) + 72 * 3600) {
