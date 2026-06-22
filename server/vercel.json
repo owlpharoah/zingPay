@@ -4,5 +4,5 @@
   "functions": {
     "api/index.ts": { "maxDuration": 60 }
   },
-  "crons": [{ "path": "/cron/refund", "schedule": "0 * * * *" }]
+  "crons": [{ "path": "/cron/refund", "schedule": "0 0 * * *" }]
 }
