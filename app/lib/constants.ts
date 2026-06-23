@@ -9,6 +9,6 @@ export const USDC_MINT = new PublicKey(
     "4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU",
 );
 export const BACKEND_URL =
-  process.env.NEXT_PUBLIC_BACKEND_URL || "https://zingpay-server.vercel.app/";
+  process.env.NEXT_PUBLIC_BACKEND_URL || "https://zingpay-server.vercel.app";
 export const RPC_URL =
   process.env.NEXT_PUBLIC_RPC_URL || "https://api.devnet.solana.com";
